@@ -1,7 +1,8 @@
 [
     {
-        "image": "Screenshot 2024-11-04 at 5.55.56\u202fPM.png",
-        "x": 376,
-        "y": 366
+        "image": "frame0_13.png",
+        "ball_exists": 1,
+        "x": 379,
+        "y": 369
     }
 ]
