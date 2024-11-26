@@ -1,10 +1,10 @@
 import cv2
 
+# Video source removed, will throw an error
 vid = cv2.VideoCapture('../data/test.mp4')
 img_counter = 0
 read, img = vid.read()
 while read:
-    cv2.imwrite(f"./test/test_img_{img_counter}.jpg", img)
     h, w, _ = img.shape
     segment_counter = 0
     for i in range(1, 9):
