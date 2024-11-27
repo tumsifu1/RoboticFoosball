@@ -33,6 +33,11 @@ def discard_image(args, labeled_data, image_files, img_index):
     print(f"Image {image_name} discarded.")
     process_next_image(args, None, image_files, img_index)
 
+def write_to_json(data, file):
+    if data is not None:
+        with open(file, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"Data saved to {file}.")
 
 def process_next_image(args, labeled_data, image_files, img_index):
     """Load the next image for labeling or finish if all images are processed."""
@@ -42,10 +47,7 @@ def process_next_image(args, labeled_data, image_files, img_index):
         img = cv2.imread(os.path.join(args.image_dir, image_name))
         cv2.imshow("Labeling Tool", img)
     else:
-        if labeled_data is not None:
-            with open(args.output_json, "w") as f:
-                json.dump(labeled_data, f, indent=4)
-            print(f"Labeling completed. Data saved to {args.output_json}.")
+        write_to_json(labeled_data, args.output_json)
         cv2.destroyAllWindows()
 
 
@@ -90,6 +92,7 @@ def main():
         elif key == ord('s'):  # Skip image
             skip_image(args, labeled_data, image_files, img_index)
         elif key == ord('q'):  # Quit
+            write_to_json(labeled_data, args.output_json)
             print("Exiting labeling tool.")
             cv2.destroyAllWindows()
             break
