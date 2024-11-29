@@ -1,15 +1,14 @@
 import cv2
+import argparse
 
-# Video source removed, will throw an error
-vid = cv2.VideoCapture('../data/test.mp4')
+argParser = argparse.ArgumentParser()
+argParser.add_argument("-v", type=str, default='../data/test.mp4', help="directory of source video file")
+args = argParser.parse_args()
+
+vid = cv2.VideoCapture(args.v)
 img_counter = 0
 read, img = vid.read()
 while read:
-    h, w, _ = img.shape
-    segment_counter = 0
-    for i in range(1, 9):
-        for j in range(1, 4):
-            cv2.imwrite(f"../data/images_part{(img_counter%4) + 1}/img_{img_counter}_{segment_counter}.jpg", img[(j - 1) * 432:(j * 432), (i - 1) * 288:(i * 288)])
-            segment_counter += 1
+    cv2.imwrite(f"../data/images_{(img_counter%3) + 1}/img_{img_counter}.jpg", img)
     read, img = vid.read()
     img_counter += 1
