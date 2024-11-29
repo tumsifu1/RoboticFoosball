@@ -1,0 +1,1 @@
+python models/binaryClassifer/train.py -i data/labeled_images_part2 -l data/labeled_data_part2.json
