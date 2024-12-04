@@ -9,13 +9,56 @@ def move_image(image_dir, output_dir, image_name):
     shutil.move(os.path.join(image_dir, image_name), os.path.join(output_dir, image_name))
 
 def mouse_click(event, x, y, flags, param):
-    """Handle mouse clicks to label the ball in an image."""
-    labeled_data, args, image_files, img_index = param 
+    """Handle mouse clicks and zooming."""
+    labeled_data, args, image_files, img_index, zoom_state = param
+
     if event == cv2.EVENT_LBUTTONDOWN:
+        # Label the ball
         image_name = image_files[img_index[0]]
         labeled_data.append({"image": image_name, "ball_exists": 1, "x": x, "y": y})
         move_image(args.image_dir, args.output_dir, image_name)
-        process_next_image(args, labeled_data, image_files, img_index)
+        process_next_image(args, labeled_data, image_files, img_index, zoom_state)
+    elif event == cv2.EVENT_MOUSEWHEEL or event == cv2.EVENT_MOUSEHWHEEL:
+        print(f"Flags value: {flags}")
+        # Extract the delta value from flags
+        delta = flags >> 16  # Get the high-order word (delta value)
+        if delta > 0:  # Scroll up
+
+            zoom_state["level"] = min(zoom_state["level"] + 1, 5)  # Max zoom level
+        elif delta < 0:  # Scroll down
+            zoom_state["level"] = max(zoom_state["level"] - 1, 0)  # Min zoom level
+
+        print(f"Zoom level: {zoom_state['level']}")  # Debugging print statement
+        update_zoom(args, image_files, img_index, zoom_state)
+ 
+def update_zoom(args, image_files, img_index, zoom_state):
+    #print("Updating zoom level")
+    """Update the zoom level and redisplay the image."""
+    image_name = image_files[img_index[0]]
+    img = cv2.imread(os.path.join(args.image_dir, image_name))
+    zoom_level = zoom_state["level"]
+
+    zoom_factor = 1 + 0.2 * zoom_level
+    h, w = img.shape[:2]
+    new_h, new_w = int(h * zoom_factor), int(w * zoom_factor)
+
+    # Resize the image based on zoom level
+    img_resized = cv2.resize(img, (new_w, new_h))
+
+    # Crop the image to maintain original dimensions and keep zoom centered
+    if zoom_factor > 1:
+        center_x, center_y = new_w // 2, new_h // 2
+        crop_x1 = max(center_x - w // 2, 0)
+        crop_y1 = max(center_y - h // 2, 0)
+        crop_x2 = crop_x1 + w
+        crop_y2 = crop_y1 + h
+        img_cropped = img_resized[crop_y1:crop_y2, crop_x1:crop_x2]
+    else:
+        img_cropped = img_resized
+
+    zoom_state["current_image"] = img_cropped
+    cv2.imshow("Labeling Tool", img_cropped)
+
 
 
 def skip_image(args, labeled_data, image_files, img_index):
@@ -39,12 +82,14 @@ def write_to_json(data, file):
             json.dump(data, f, indent=4)
         print(f"Data saved to {file}.")
 
-def process_next_image(args, labeled_data, image_files, img_index):
+def process_next_image(args, labeled_data, image_files, img_index, zoom_state):
     """Load the next image for labeling or finish if all images are processed."""
     img_index[0] += 1
     if img_index[0] < len(image_files):
         image_name = image_files[img_index[0]]
         img = cv2.imread(os.path.join(args.image_dir, image_name))
+        zoom_state["current_image"] = img
+        zoom_state["level"] = 0  # Reset zoom for the next image
         cv2.imshow("Labeling Tool", img)
     else:
         write_to_json(labeled_data, args.output_json)
@@ -61,8 +106,12 @@ def main():
 
     # Initialize variables
     labeled_data = []
-    img_index = [-1]  # starts at negative one to start at 0 after incrementing || img_index is a list to allow for mutable variables 
+    img_index = [-1]  # Mutable index for the current image
     image_files = [f for f in os.listdir(args.image_dir) if f.endswith(".jpg") or f.endswith(".png")]
+    zoom_state = {"level": 0, "current_image": None}  # Track zoom level and current image
+
+    cv2.namedWindow("Labeling Tool")
+    cv2.setMouseCallback("Labeling Tool", mouse_click, param=(labeled_data, args, image_files, img_index, zoom_state))
 
     if not image_files:
         print("No images found in the specified directory.")
@@ -71,18 +120,15 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    # Set up OpenCV window and mouse callback
-    cv2.namedWindow("Labeling Tool")
-    cv2.setMouseCallback("Labeling Tool", mouse_click, param=(labeled_data, args, image_files, img_index))
-
     print("Instructions:")
     print("- Left Click: Label ball on image")
+    print("- Mouse Wheel: Zoom in/out")
     print("- Press 'd': Discard image (not saved or labeled, stays in original directory)")
     print("- Press 's': Skip image (labeled as no ball in frame)")
     print("- Press 'q': Quit")
 
     # Start labeling
-    process_next_image(args, labeled_data, image_files, img_index)
+    process_next_image(args, labeled_data, image_files, img_index, zoom_state)
 
     # Listen for key presses
     while True:
