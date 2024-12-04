@@ -4,6 +4,7 @@ import os
 import argparse
 import shutil
 
+
 def move_image(image_dir, output_dir, image_name):
     """Move an image from one directory to another."""
     shutil.move(os.path.join(image_dir, image_name), os.path.join(output_dir, image_name))
@@ -13,17 +14,25 @@ def mouse_click(event, x, y, flags, param):
     labeled_data, args, image_files, img_index, zoom_state = param
 
     if event == cv2.EVENT_LBUTTONDOWN:
-        # Label the ball
+        # Adjust coordinates based on zoom and crop
+        zoom_level = zoom_state["level"]
+        zoom_factor = 1 + 0.2 * zoom_level
+        crop_x, crop_y = zoom_state.get("crop_offset", (0, 0))  # Crop offsets
+        original_x = int((x + crop_x) / zoom_factor)
+        original_y = int((y + crop_y) / zoom_factor)
+
+        # Label the ball using original image coordinates
         image_name = image_files[img_index[0]]
-        labeled_data.append({"image": image_name, "ball_exists": 1, "x": x, "y": y})
+        labeled_data.append({"image": image_name, "ball_exists": 1, "x": original_x, "y": original_y})
         move_image(args.image_dir, args.output_dir, image_name)
+
         process_next_image(args, labeled_data, image_files, img_index, zoom_state)
 
     elif event == cv2.EVENT_RBUTTONDOWN:
         # Zoom in where the right click occurs
-        zoom_state["level"] = min(zoom_state["level"] + 1, 5)  # Cap zoom level at 5
+        zoom_state["level"] = min(zoom_state["level"] + 1, 20)  # Cap zoom level at 20
         zoom_state["center"] = (x, y)  # Update the zoom center to the right-click position
-        #print(f"Zoom in at ({x}, {y}), Level: {zoom_state['level']}")
+        print(f"Zoom in at ({x}, {y}), Level: {zoom_state['level']}")
         update_zoom(args, image_files, img_index, zoom_state)
 
 def update_zoom(args, image_files, img_index, zoom_state):
@@ -49,6 +58,10 @@ def update_zoom(args, image_files, img_index, zoom_state):
     crop_x2 = min(crop_x1 + w, new_w)
     crop_y2 = min(crop_y1 + h, new_h)
 
+    # Store the offsets for coordinate mapping
+    zoom_state["crop_offset"] = (crop_x1, crop_y1)
+
+    # Crop the image
     img_cropped = img_resized[crop_y1:crop_y2, crop_x1:crop_x2]
     zoom_state["current_image"] = img_cropped
 
