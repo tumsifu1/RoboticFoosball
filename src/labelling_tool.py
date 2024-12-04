@@ -18,21 +18,15 @@ def mouse_click(event, x, y, flags, param):
         labeled_data.append({"image": image_name, "ball_exists": 1, "x": x, "y": y})
         move_image(args.image_dir, args.output_dir, image_name)
         process_next_image(args, labeled_data, image_files, img_index, zoom_state)
-    elif event == cv2.EVENT_MOUSEWHEEL or event == cv2.EVENT_MOUSEHWHEEL:
-        print(f"Flags value: {flags}")
-        # Extract the delta value from flags
-        delta = flags >> 16  # Get the high-order word (delta value)
-        if delta > 0:  # Scroll up
 
-            zoom_state["level"] = min(zoom_state["level"] + 1, 5)  # Max zoom level
-        elif delta < 0:  # Scroll down
-            zoom_state["level"] = max(zoom_state["level"] - 1, 0)  # Min zoom level
-
-        print(f"Zoom level: {zoom_state['level']}")  # Debugging print statement
+    elif event == cv2.EVENT_RBUTTONDOWN:
+        # Zoom in where the right click occurs
+        zoom_state["level"] = min(zoom_state["level"] + 1, 5)  # Cap zoom level at 5
+        zoom_state["center"] = (x, y)  # Update the zoom center to the right-click position
+        #print(f"Zoom in at ({x}, {y}), Level: {zoom_state['level']}")
         update_zoom(args, image_files, img_index, zoom_state)
- 
+
 def update_zoom(args, image_files, img_index, zoom_state):
-    #print("Updating zoom level")
     """Update the zoom level and redisplay the image."""
     image_name = image_files[img_index[0]]
     img = cv2.imread(os.path.join(args.image_dir, image_name))
@@ -43,38 +37,36 @@ def update_zoom(args, image_files, img_index, zoom_state):
     new_h, new_w = int(h * zoom_factor), int(w * zoom_factor)
 
     # Resize the image based on zoom level
-    img_resized = cv2.resize(img, (new_w, new_h))
+    img_resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
-    # Crop the image to maintain original dimensions and keep zoom centered
-    if zoom_factor > 1:
-        center_x, center_y = new_w // 2, new_h // 2
-        crop_x1 = max(center_x - w // 2, 0)
-        crop_y1 = max(center_y - h // 2, 0)
-        crop_x2 = crop_x1 + w
-        crop_y2 = crop_y1 + h
-        img_cropped = img_resized[crop_y1:crop_y2, crop_x1:crop_x2]
-    else:
-        img_cropped = img_resized
+    # Determine the cropping region centered on the click position
+    center_x, center_y = zoom_state.get("center", (w // 2, h // 2))  # Default to center if no click
+    center_x = int(center_x * zoom_factor)
+    center_y = int(center_y * zoom_factor)
 
+    crop_x1 = max(center_x - w // 2, 0)
+    crop_y1 = max(center_y - h // 2, 0)
+    crop_x2 = min(crop_x1 + w, new_w)
+    crop_y2 = min(crop_y1 + h, new_h)
+
+    img_cropped = img_resized[crop_y1:crop_y2, crop_x1:crop_x2]
     zoom_state["current_image"] = img_cropped
+
     cv2.imshow("Labeling Tool", img_cropped)
 
-
-
-def skip_image(args, labeled_data, image_files, img_index):
+def skip_image(args, labeled_data, image_files, img_index, zoom_state):
     """Skip the current image, marking it as no ball in the frame."""
     image_name = image_files[img_index[0]]
     labeled_data.append({"image": image_name, "ball_exists": 0})
     move_image(args.image_dir, args.output_dir, image_name)
     print(f"Image {image_name} skipped.")
-    process_next_image(args, labeled_data, image_files, img_index)
+    process_next_image(args, labeled_data, image_files, img_index, zoom_state)
 
-
-def discard_image(args, labeled_data, image_files, img_index):
+def discard_image(args, labeled_data, image_files, img_index, zoom_state):
     """Discard the current image without labeling or moving it."""
     image_name = image_files[img_index[0]]
     print(f"Image {image_name} discarded.")
-    process_next_image(args, None, image_files, img_index)
+    process_next_image(args, None, image_files, img_index, zoom_state)
 
 def write_to_json(data, file):
     if data is not None:
@@ -90,15 +82,15 @@ def process_next_image(args, labeled_data, image_files, img_index, zoom_state):
         img = cv2.imread(os.path.join(args.image_dir, image_name))
         zoom_state["current_image"] = img
         zoom_state["level"] = 0  # Reset zoom for the next image
+        zoom_state["center"] = None  # Reset zoom center
         cv2.imshow("Labeling Tool", img)
     else:
         write_to_json(labeled_data, args.output_json)
         cv2.destroyAllWindows()
 
-
 def main():
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Image Labeling Tool with Discard Feature")
+    parser = argparse.ArgumentParser(description="Image Labeling Tool with Zoom Feature")
     parser.add_argument("--image_dir", required=True, help="Directory with images to label")
     parser.add_argument("--output_dir", required=True, help="Directory to save labeled images")
     parser.add_argument("--output_json", required=True, help="Path to save JSON file with labels")
@@ -108,7 +100,7 @@ def main():
     labeled_data = []
     img_index = [-1]  # Mutable index for the current image
     image_files = [f for f in os.listdir(args.image_dir) if f.endswith(".jpg") or f.endswith(".png")]
-    zoom_state = {"level": 0, "current_image": None}  # Track zoom level and current image
+    zoom_state = {"level": 0, "center": None, "current_image": None}  # Track zoom level and current image
 
     cv2.namedWindow("Labeling Tool")
     cv2.setMouseCallback("Labeling Tool", mouse_click, param=(labeled_data, args, image_files, img_index, zoom_state))
@@ -122,7 +114,8 @@ def main():
 
     print("Instructions:")
     print("- Left Click: Label ball on image")
-    print("- Mouse Wheel: Zoom in/out")
+    print("- Right Click: Zoom in at clicked location")
+    print("- Space: Zoom out")
     print("- Press 'd': Discard image (not saved or labeled, stays in original directory)")
     print("- Press 's': Skip image (labeled as no ball in frame)")
     print("- Press 'q': Quit")
@@ -132,11 +125,15 @@ def main():
 
     # Listen for key presses
     while True:
-        key = cv2.waitKey(0) & 0xFF # mask 0xFF to get the last 8 bits
-        if key == ord('d'):  # Discard image
-            discard_image(args, labeled_data, image_files, img_index)
+        key = cv2.waitKey(0) & 0xFF
+        if key == ord(' '):  # Spacebar to zoom out
+            zoom_state["level"] = max(zoom_state["level"] - 1, 0)  # Cap zoom level at 0
+            #print(f"Zoom level (out): {zoom_state['level']}")
+            update_zoom(args, image_files, img_index, zoom_state)
+        elif key == ord('d'):  # Discard image
+            discard_image(args, labeled_data, image_files, img_index, zoom_state)
         elif key == ord('s'):  # Skip image
-            skip_image(args, labeled_data, image_files, img_index)
+            skip_image(args, labeled_data, image_files, img_index, zoom_state)
         elif key == ord('q'):  # Quit
             write_to_json(labeled_data, args.output_json)
             print("Exiting labeling tool.")
