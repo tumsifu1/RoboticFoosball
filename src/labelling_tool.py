@@ -83,7 +83,7 @@ def discard_image(args, labeled_data, image_files, img_index, zoom_state):
 
 def write_to_json(data, file):
     if data is not None:
-        with open(file, "w") as f:
+        with open(file, "a") as f:
             json.dump(data, f, indent=4)
         print(f"Data saved to {file}.")
 

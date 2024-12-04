@@ -1,0 +1,33 @@
+[
+    {
+        "image": "img_329.jpg",
+        "ball_exists": 1,
+        "x": 464,
+        "y": 429
+    },
+    {
+        "image": "img_473.jpg",
+        "ball_exists": 1,
+        "x": 387,
+        "y": 902
+    },
+    {
+        "image": "img_467.jpg",
+        "ball_exists": 1,
+        "x": 381,
+        "y": 907
+    },
+    {
+        "image": "img_38.jpg",
+        "ball_exists": 1,
+        "x": 1813,
+        "y": 813
+    },
+
+    {
+        "image": "img_659.jpg",
+        "ball_exists": 1,
+        "x": 1730,
+        "y": 941
+    }
+]
