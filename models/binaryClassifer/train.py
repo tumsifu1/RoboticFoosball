@@ -23,7 +23,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
     optimizer = kwargs['optimizer']
     scheduler = kwargs['scheduler']
     loss_function = kwargs['loss_function']
-    #dataloader stuff will go here (Need to discuss this)
+
     losses_train = [] #array to store training losses for plotting
     losses_val = [] #array to store validation lossesc for plotting
 
@@ -75,11 +75,11 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
 
 def main():
     argParser = argparse.ArgumentParser()
-    argParser.add_argument("-e", type=int, default=30, help="number of epochs")
-    argParser.add_argument('-i', metavar='images_directory', type=str, help='path to images directory (default: ./data/images)', default='./data/images')
-    argParser.add_argument('-l', metavar='labels', type=str, help='path to labels directory', default='./data/labels')
-    argParser.add_argument('-b', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
-    argParser.add_argument('-o', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
+    argParser.add_argument("-epoch", type=int, default=30, help="number of epochs")
+    argParser.add_argument('-image', metavar='images_directory', type=str, help='path to images directory (default: ./data/images)', default='./data/images')
+    argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels')
+    argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
+    argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
     args = argParser.parse_args()
 
     #random seed for reproducibility
@@ -90,10 +90,9 @@ def main():
         torch.cuda.manual_seed(42)
         
     #make sure output folder exists 
-    if not os.path.exists(args.o):
-        os.makedirs(args.o)
+    if not os.path.exists(args.output):
+        os.makedirs(args.oput)
 
-    
     #check if cuda is available
     device = 'cpu'
     if torch.cuda.is_available():
@@ -101,6 +100,8 @@ def main():
     print(f'Using: {device}')
 
     # Define transformations
+    #translation
+    #zooming
     train_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10),
@@ -114,8 +115,8 @@ def main():
     ])
 
     #load the dataset
-    images_dir = args.i
-    json_path = args.l
+    images_dir = args.image
+    json_path = args.labrels
     train_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=train_transform)
     test_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=test_transform)
 
@@ -129,7 +130,7 @@ def main():
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min')
-    loss_function = nn.BCEWithLogitsLoss()
+    loss_function = nn.BCEWithLogitsLoss() #mean squared for position 
 
     train(  
             epochs=args.e, 
@@ -142,7 +143,6 @@ def main():
             device=device,
             output=args.o
             )
-
 
 if __name__ == "__main__":
     main()
