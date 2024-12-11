@@ -13,65 +13,100 @@ import numpy as np
 import random
 
 def train(epochs: Optional[int] = 30, **kwargs) -> None:
-    
-    print("Training Parameters")
+    print("Starting training...")
     for kwarg in kwargs:
-        print(f"{kwarg} = {kwargs[kwarg]}")
+        print(f"{kwarg}: {kwargs[kwarg]}")
+    model = kwargs["model"]
+    optimizer = kwargs["optimizer"]
+    scheduler = kwargs["scheduler"]
+    loss_function = kwargs["loss_function"]
+    train_loader = kwargs["train"]
+    test_loader = kwargs["test"]
+    device = kwargs["device"]
+    output_dir = kwargs["output"]
 
-    model = kwargs['model']
-    model.train()
-    optimizer = kwargs['optimizer']
-    scheduler = kwargs['scheduler']
-    loss_function = kwargs['loss_function']
-
-    losses_train = [] #array to store training losses for plotting
-    losses_val = [] #array to store validation lossesc for plotting
+    model.to(device)
+    #lists for trianign and val loss
+    losses_train = []
+    losses_val = []
 
     for epoch in range(epochs):
         model.train()
         train_loss = 0
-        val_loss = 0
-        for batch_idx, (data, label) in enumerate(kwargs['train']):
-            data, label = data.to(kwargs['device']), label.to(kwargs['device'])
+
+        for images,labels in train_loader:
+            # print(batch)
+            #print(f"images: {images}")
+            #print(f"Labels: {labels}")
+            images, labels = images.to(device), labels.to(device)
+
             optimizer.zero_grad()
-            output = model(data)
-            label = label.unsqueeze(1) #add a dimension to match the output shape
-            loss = loss_function(output, label)
+            output = model(images) 
+            
+            loss = loss_function(output, labels.unsqueeze(1).float()) #compute loss and add dimension to labels
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
-        train_loss /= len(kwargs['train'])
+
+        train_loss /= len(train_loader) #average loss over the epoch
         losses_train.append(train_loss)
+
+        #validation
         model.eval()
+        val_loss = 0 
         correct = 0
-
+        total = 0
         with torch.no_grad():
-            for data, label in kwargs['test']:
-                data, label = data.to(kwargs['device']), label.to(kwargs['device'])
-                output = model(data)
-                label = label.unsqueeze(1) #add a dimension to match the output shape
-                val_loss += loss_function(output, label).item()
-                pred = output.round()
-                correct += pred.eq(label.view_as(pred)).sum().item()
+            for images, labels in test_loader:
+                images, labels = images.to(device), labels.to(device)
 
-        val_loss /= len(kwargs['test'])
+                output = model(images)
+        
+                #compute loss 
+                val_loss += loss_function(output,  labels.unsqueeze(1).float())
+
+                #compute accuracy
+                pred = torch.round(torch.sigmoid(output)) #convert to binary 
+                correct += (pred.squeeze() == labels).sum().item() #sum the correct predictions
+                total += labels.size(0)
+                
+        val_loss /= len(test_loader)
+            
         losses_val.append(val_loss)
 
-        accuracy = 100. * correct / len(kwargs['test'].dataset)
-        print(f"\nTest set: Average loss: {val_loss:.4f}, Accuracy: {correct}/{len(kwargs['test'].dataset)} ({accuracy:.0f}%)\n")
+        #scheduler step
         scheduler.step(val_loss)
-        print(f'Saving Weights to {kwargs["output"]}')
-        torch.save(model.state_dict(), os.path.join(kwargs['output'], 'model.pth'))
+        #save stats to output folder
+        accuracy = 100.* correct/total #TODO: add confusion matrix
+        file_path = f"{output_dir}/stats.txt"
+        if not os.path.exists(file_path):
+            with open(file_path, "w") as f:
+                pass
 
-        plt.figure(2, figsize=(12, 7))
-        plt.clf()
+        with open(file_path, "a") as f:
+            f.write(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}\n")
+        
+        
+        print(f"Correct: {correct}, Total: {total}, Accuracy: {accuracy}")
+
+        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}")
+        #save mode weights
+        torch.save(model.state_dict(), f"{output_dir}/model.pth")
+
+        # Plot and save loss graph
+        plt.figure(figsize=(12, 7))
         plt.grid(True)
-        plt.plot(losses_train, label='train')
-        plt.plot(losses_val, label='val')
+        plt.plot(losses_train, label='Train Loss')
+        plt.plot(losses_val, label='Validation Loss')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.legend()
-        plt.savefig(os.path.join(kwargs['output'], 'loss.png'))
+        plt.savefig(os.path.join(output_dir, 'loss.png'))
+        plt.close()
+    
+    print("Training complete.")
+
+
 
 def main():
     argParser = argparse.ArgumentParser()
@@ -116,13 +151,13 @@ def main():
 
     #load the dataset
     images_dir = args.image
-    json_path = args.labrels
+    json_path = args.labels
     train_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=train_transform)
     test_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=test_transform)
 
     #load the dataloader
-    train_dataloader = DataLoader(train_dataset, batch_size=args.b, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.b, shuffle=False)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDataset.collate_fn)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
 
     #load the model
     model = BinaryClassifier()
@@ -133,7 +168,7 @@ def main():
     loss_function = nn.BCEWithLogitsLoss() #mean squared for position 
 
     train(  
-            epochs=args.e, 
+            epochs=args.epoch, 
             model=model, 
             optimizer=optimizer, 
             scheduler=scheduler,    
@@ -141,7 +176,7 @@ def main():
             train=train_dataloader, 
             test=test_dataloader, 
             device=device,
-            output=args.o
+            output=args.output
             )
 
 if __name__ == "__main__":

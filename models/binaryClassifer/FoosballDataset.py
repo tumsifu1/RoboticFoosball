@@ -9,6 +9,7 @@ import torch
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 
 class FoosballDataset(Dataset): 
     def __init__(self, images_dir, json_path, transform=None, train=True):
@@ -28,7 +29,7 @@ class FoosballDataset(Dataset):
         #apply these to training dataset
         if train:
             self.augmentations = A.Compose([
-                A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.06, p=0.5),
+                A.RandomBrightnessContrast(brightness_limit=0.00000000005, contrast_limit=0.0000002, p=0.5),
                 #A.HueSaturationValue(hue_shift_limit=1, sat_shift_limit=1, val_shift_limit=1, p=0.5)
 
             ])
@@ -36,11 +37,28 @@ class FoosballDataset(Dataset):
             self.augmentations = None
     def __len__(self):
         return len(self.data)
+    
+    def collate_fn( batch):
+        #flatten paired regions and labels
+
+        regions = torch.cat([item['regions'] for item in batch], dim=0)
+        labels = torch.cat([item['labels'] for item in batch], dim=0)
+
+        #shuffle regions and labels
+        combined = list(zip(regions, labels))
+        random.shuffle(combined)
+        regions, labels = zip(*combined)
+
+        return torch.stack(regions),torch.tensor(labels)
+    
     #2304 × 1296
     def __getitem__(self, idx):
         entry = self.data[idx]
         img_name = entry['image']
-        ball_x, ball_y = entry['x'], entry['y']
+        ball_exists = entry['ball_exists']
+        ball_x = None
+        ball_y = None
+
 
         img_path = os.path.join(self.images_dir, img_name)
         image = Image.open(img_path).convert('RGB')
@@ -54,55 +72,42 @@ class FoosballDataset(Dataset):
             image = torch.tensor(augmented['image']).permute(2, 0, 1).float()  # Convert back to CHW
 
         _, height, width = image.shape
-
-        # Divide the image into regions
+                # Divide the image into regions
         region_height = height // self.grid_size
         region_width = width // self.grid_size
 
-        # Determine the region containing the ball
-        col_index = ball_x // region_width
-        row_index = ball_y // region_height
-        region_index = row_index * self.grid_size + col_index
-
-        # Calculate the ball's relative coordinates within its region
-        ball_x_rel = ball_x - col_index * region_width
-        ball_y_rel = ball_y - row_index * region_height
-
+        # Divide the image into regions
         regions = []
-        labels = []  # Store labels for each region
         for i in range(self.grid_size):
             for j in range(self.grid_size):
                 region = image[:, 
                             i * region_height:(i + 1) * region_height,
                             j * region_width:(j + 1) * region_width]
                 regions.append(region)
-
-                # Assign label: 1 if this is the ball region, else 0
-                if i * self.grid_size + j == region_index:
-                    labels.append(1)  # Ball region
-                else:
-                    labels.append(0)  # Non-ball region
-
-        if self.train:
-            # Select the region containing the ball
-            labeled_region = regions[region_index]
-
-            # Randomly select a region that does not contain the ball
-            non_ball_indices = [i for i in range(len(regions)) if i != region_index]
-            random_index = np.random.choice(non_ball_indices)
-            random_region = regions[random_index]
-            random_label = labels[random_index]
-
-            # Return labeled and random regions with their labels
-            return {
-                "regions": torch.stack([labeled_region, random_region]),
-                "labels": torch.tensor([1, random_label]),
-                "relative_coords": (ball_x_rel, ball_y_rel)
-            }
-
+        # Find positive (ball) region
+        if ball_exists:
+            ball_x, ball_y = entry['x'], entry['y']
+            col_index = ball_x // region_width
+            row_index = ball_y // region_height
+            region_index = row_index * self.grid_size + col_index
+            positive_region = regions[region_index]
         else:
-            # In test mode, return all regions and their labels
-            return {
-                "regions": torch.stack(regions),
-                "labels": torch.tensor(labels)
-            }
+            positive_region = None  # No ball in this image
+
+        # Select a random negative (no ball) region
+        if ball_exists:
+            negative_indices = [i for i in range(len(regions)) if i != region_index]
+        else:
+            negative_indices = list(range(len(regions)))
+        random_negative_index = np.random.choice(negative_indices)
+        negative_region = regions[random_negative_index]
+
+        # Prepare labels
+        positive_label = 1 if ball_exists else 0
+        negative_label = 0
+
+        # Return positive and negative samples
+        return {
+            "regions": torch.stack([positive_region, negative_region]),
+            "labels": torch.tensor([positive_label, negative_label]),
+        }
