@@ -9,6 +9,7 @@ fonttools==4.55.3
 fsspec==2024.12.0
 importlib_resources==6.4.5
 Jinja2==3.1.4
+joblib==1.4.2
 kiwisolver==1.4.7
 MarkupSafe==3.0.2
 matplotlib==3.9.4
@@ -24,11 +25,14 @@ pydantic_core==2.27.2
 pyparsing==3.2.0
 python-dateutil==2.9.0.post0
 PyYAML==6.0.2
+scikit-learn==1.6.0
 scipy==1.13.1
 simsimd==6.2.1
 six==1.17.0
+sklearn==0.0
 stringzilla==3.11.2
 sympy==1.13.1
+threadpoolctl==3.5.0
 torch==2.5.1
 torchvision==0.20.1
 typing_extensions==4.12.2

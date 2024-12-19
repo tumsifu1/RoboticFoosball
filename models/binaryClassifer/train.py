@@ -180,7 +180,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
 def main():
     argParser = argparse.ArgumentParser()
     argParser.add_argument("-epoch", type=int, default=30, help="number of epochs")
-    argParser.add_argument('-image', metavar='images_directory', type=str, help='path to images directory (default: ./data/image_data/images)', default='./data/images')
+    argParser.add_argument('-images', metavar='images_directory', type=str, help='path to images directory (default: ./data/image_data/images)', default='./data/images')
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
@@ -219,7 +219,7 @@ def main():
     ])
 
     #load the dataset
-    images_dir = args.image
+    images_dir = args.images
     json_path = args.labels
     json_path = args.labels
     train_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=train_transform)
