@@ -6,8 +6,8 @@ from torchvision import transforms
 from FoosballDataset import FoosballDataset
 import matplotlib.pyplot as plt
 import cv2
-json_path = "data/labelled_data1.json"
-images_dir = "data/labelled_images_1"
+json_path = "data/labels/labels.json"
+images_dir = "data/image_data/images"
 
 test_transform = transforms.Compose([
     transforms.Resize((224, 224)),
