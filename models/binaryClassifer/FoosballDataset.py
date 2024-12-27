@@ -22,13 +22,13 @@ class FoosballDataset(Dataset):
         with open (json_path, 'r') as f:
             self.data = json.load(f)
 
+        
         self.preprocess = transforms.Compose([  # image is 1280x1280
             #transforms.ToTensor(),           # Convert to PyTorch tensor (C, H, W)
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize
         ])
 
-        #apply these to training dataset
-
+        #pixel augmentations for training classifer model
         self.pixelAugmentations = A.Compose([
             A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.3),  # Subtle brightness/contrast tweaks
             A.GaussNoise(std_range=(0.0,0.1),mean_range=(0,0), p=0.2),  # Reduced noise intensity and probability
@@ -36,6 +36,7 @@ class FoosballDataset(Dataset):
             A.Blur(blur_limit=3, p=0.1)  # Very occasional slight blur
         ])
 
+        #spatial augmentations for training localizer model
         self.spatialAugmentations = A.Compose(
             [
             A.HorizontalFlip(p=0.5),
@@ -57,8 +58,9 @@ class FoosballDataset(Dataset):
 
         #shuffle regions and labels
         combined = list(zip(regions, labels))
-        random.shuffle(combined)
+        #random.shuffle(combined)
         regions, labels = zip(*combined)
+
 
         return torch.stack(regions),torch.tensor(labels)
     
@@ -85,12 +87,17 @@ class FoosballDataset(Dataset):
             negative_indices = [i for i in range(len(regions)) if i != region_index]
         else:
             negative_indices = list(range(len(regions)))
+            raise ValueError("Ball does not exist in the image.")
+        
         random_negative_index = np.random.choice(negative_indices)
         negative_region = regions[random_negative_index]
         return negative_region
     
     def breakImageIntoRegions(self, image):
         _, height, width = image.shape
+        assert height % self.grid_size == 0, "Image height is not divisible by grid_size"
+        assert width % self.grid_size == 0, "Image width is not divisible by grid_size"
+
         # Divide the image into regions
         # Divide the image into regions
         region_height = height // self.grid_size
@@ -125,6 +132,7 @@ class FoosballDataset(Dataset):
             augmented = self.pixelAugmentations(image=image.permute(1, 2, 0).numpy(),)  # Convert to HWC for Albumentations
             image = torch.tensor(augmented['image']).permute(2, 0, 1).float()  # Convert back to CHW
         image = self.preprocess(image)  # Always preprocess the image
+
         return image
     
     def returnLabels(self, ball_exists, positive_region, negative_region):
@@ -148,7 +156,7 @@ class FoosballDataset(Dataset):
         regions, region_width, region_height = self.breakImageIntoRegions(image)
         # Find positive (ball) region
 
-        positive_region, region_index = self.getRegionWithBall(self, ball_exists, x, y, regions, region_height, region_width)
+        positive_region, region_index = self.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
         # Select a random negative (no ball) region
 
         negative_region = self.getRandomNegativeRegion(ball_exists, region_index, regions)
