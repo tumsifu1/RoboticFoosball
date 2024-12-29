@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 import torch
 import json
 from torchvision import transforms
-from FoosballDataset import FoosballDataset
+from models.binaryClassifier.FoosballDataset import FoosballDataset
 import matplotlib.pyplot as plt
 import cv2
 json_path = "data/labels/labels.json"
@@ -16,7 +16,7 @@ test_transform = transforms.Compose([
 
 # Create dataset and dataloader
 dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=test_transform)
-dataloader = DataLoader(dataset, batch_size=2, shuffle= True, collate_fn=FoosballDataset.collate_fn)
+dataloader = DataLoader(dataset, batch_size=1, shuffle= False, collate_fn=FoosballDataset.collate_fn)
 print(f"Dataset size: {len(dataset)}")
 
 def unnormalize(image, mean, std):
@@ -113,10 +113,9 @@ def __main__():
     # Define mean and std for unnormalization
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
-    #test_dataloader(dataloader, mean, std)
     test_collate_fn()
     test_getRegionWithBall()
-
+    test_dataloader(dataloader, mean, std)
 
 if __name__ == "__main__":
     __main__()

@@ -10,6 +10,8 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import sys
+import os
 
 class FoosballDataset(Dataset): 
     def __init__(self, images_dir, json_path, transform=None, train=True):
@@ -80,11 +82,11 @@ class FoosballDataset(Dataset):
             raise ValueError("Ball does not exist in the image.")
         
         return positive_region, region_index
-    
-    def getRandomNegativeRegion(self,ball_exists, region_index, regions):
+
+    def getRandomNegativeRegion(self,ball_exists, pos_region_index, regions):
             # Select a random negative (no ball) region
         if ball_exists:
-            negative_indices = [i for i in range(len(regions)) if i != region_index]
+            negative_indices = [i for i in range(len(regions)) if i != pos_region_index]
         else:
             negative_indices = list(range(len(regions)))
             raise ValueError("Ball does not exist in the image.")
@@ -156,10 +158,10 @@ class FoosballDataset(Dataset):
         regions, region_width, region_height = self.breakImageIntoRegions(image)
         # Find positive (ball) region
 
-        positive_region, region_index = self.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
+        positive_region, pos_region_index = self.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
         # Select a random negative (no ball) region
 
-        negative_region = self.getRandomNegativeRegion(ball_exists, region_index, regions)
+        negative_region = self.getRandomNegativeRegion(ball_exists, pos_region_index, regions)
 
         # Return positive and negative samples
         return self.returnLabels(ball_exists, positive_region, negative_region)
