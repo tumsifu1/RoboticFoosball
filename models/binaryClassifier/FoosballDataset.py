@@ -12,6 +12,7 @@ import numpy as np
 import random
 import sys
 import os
+from src.tools.unnormalize import unnormalize
 
 class FoosballDataset(Dataset): 
     def __init__(self, images_dir, json_path, transform=None, train=True):
@@ -67,21 +68,42 @@ class FoosballDataset(Dataset):
         return torch.stack(regions),torch.tensor(labels)
     
     def getRegionWithBall(self, ball_exists, x, y, regions, region_height, region_width):
-        # Find positive (ball) region
+        # These calculations are correct for a 4x4 grid and fixed dimensions
+        # region_height = 1296 // 4 = 324
+        # region_width = 2304 // 4 = 576
+        total_width = region_width * self.grid_size
+        total_height = region_height * (len(regions) // self.grid_size)
+        #print(f"Total Image Dimensions: width={total_width}, height={total_height}")
+
         if ball_exists:
-            ball_x, ball_y = x, y 
-            #print(f"Region Width: {region_width}, Region Height: {region_height}")
+            ball_x, ball_y = x, y
+
+            # Calculate col_index (this is correct)
             col_index = ball_x // region_width
+            #print(f"Col Index: {col_index} ball_x: {ball_x} region_width: {region_width}")
+
+            # Calculate row_index (this is correct)
             row_index = ball_y // region_height
-            #print(f"Row: {row_index}, Col: {col_index}")
+            #print(f"Row Index: {row_index} ball_y: {ball_y} region_height: {region_height}")
+            # Ensure row_index and col_index are within bounds
+            row_index = min(row_index, self.grid_size - 1)
+            col_index = min(col_index, self.grid_size - 1)
+
+            # Calculate region_index
             region_index = row_index * self.grid_size + col_index
+
+            #print(f"self.grid_size: {self.grid_size}, Region Index: {region_index}")
+
             if region_index < 0 or region_index >= len(regions):
                 raise IndexError(f"Invalid region_index: {region_index}. Valid range is 0 to {len(regions)-1}.")
+
             positive_region = regions[region_index]
+
         else:
             raise ValueError("Ball does not exist in the image.")
-        
+
         return positive_region, region_index
+
 
     def getRandomNegativeRegion(self,ball_exists, pos_region_index, regions):
             # Select a random negative (no ball) region
@@ -111,10 +133,12 @@ class FoosballDataset(Dataset):
         for i in range(self.grid_size):
             for j in range(self.grid_size):
                 region = image[:, 
-                            i * region_height:(i + 1) * region_height,
+                            i * region_height:(i + 1) * region_height, # take all channels, take ith region height to i+1th region height
                             j * region_width:(j + 1) * region_width]
                 regions.append(region)
-        return regions, region_height, region_width
+                #print(f"Row {i}, Col {j} -> Index {len(regions) - 1}")
+        return regions, region_width, region_height
+    
     
     def setupGetItem(self, idx):
         entry = self.data[idx]

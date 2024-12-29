@@ -1,6 +1,7 @@
 from models.binaryClassifier.FoosballDataset import FoosballDataset
-import torch
 
+import torch
+import matplotlib.pyplot as plt
 
 class FoosballDatasetLocalizer(FoosballDataset):
 
@@ -15,23 +16,34 @@ class FoosballDatasetLocalizer(FoosballDataset):
         y_coords = torch.tensor([item['y'] for item in batch], dtype=torch.float32)
 
         return regions, x_coords, y_coords
-    def get_new_coordinates(self, x, y, row_index, col_index,region_width, region_height):
+    def get_new_coordinates(self, x, y,region_width, region_height):
+        print("Get new coordinates")
+        col_index = x // region_width
+        row_index = y // region_height
+        print(f"X: {x}, Y: {y}")
+        print(f"Row Index: {row_index}, Col Index: {col_index}")
         new_x = x - (col_index*region_width)
-        new_y = y - (row_index *region_height )
+        new_y = y - (row_index *region_height)
+
+        if new_x < 0 or new_y < 0:
+            raise ValueError(f"Invalid coordinates: ({new_x}, {new_y})")
 
         return new_x, new_y
-    
-    def __get__item(self, idx):
+
+
+    def __getitem__(self, idx):
+
         image, ball_exists, x, y = self.setupGetItem(idx)
-        regions, region_height, region_width = self.breakImageIntoRegions(image)
+        #plt.imshow(image)
+        #plt.scatter(x, y, c='r', s=5)
+        #plt.show()
+        image = self.preProcessImage(image)
+
+        regions,region_width, region_height = self.breakImageIntoRegions(image)
         positive_region, region_index = self.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
-        new_x, new_y = self.get_new_coordinates(x, y, region_index, region_index, region_width, region_height)
-        
-        return {
-            "region": positive_region,
-            "x": new_x,
-            "y": new_y
-        }
+        new_x, new_y = self.get_new_coordinates(x, y, region_width, region_height)
+        return positive_region, new_x, new_y, ball_exists
+
     
 
     
