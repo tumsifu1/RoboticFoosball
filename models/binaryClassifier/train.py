@@ -58,13 +58,6 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
             #print(f"Labels: {labels}")
             images, labels = images.to(device), labels.to(device)
 
-
-        for images,labels in train_loader:
-            # print(batch)
-            #print(f"images: {images}")
-            #print(f"Labels: {labels}")
-            images, labels = images.to(device), labels.to(device)
-
             optimizer.zero_grad()
             output = model(images) 
             
@@ -77,8 +70,6 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
             train_loss += loss.item()
 
         train_loss /= len(train_loader) #average loss over the epoch
-
-        train_loss /= len(train_loader) #average loss over the epoch
         losses_train.append(train_loss)
 
         #validation
@@ -86,9 +77,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         #validation
         model.eval()
         val_loss = 0 
-        val_loss = 0 
         correct = 0
-        total = 0
         total = 0
         with torch.no_grad():
             for images, labels in test_loader:
@@ -111,10 +100,9 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         losses_val.append(val_loss)
 
         #scheduler step
-        #scheduler step
         scheduler.step(val_loss)
         #save stats to output folder
-        accuracy = 100.* correct/total #TODO: add confusion matrix
+        accuracy = 100* correct/total 
         file_path = f"{output_dir}/stats.txt"
         if not os.path.exists(file_path):
             with open(file_path, "w") as f:
@@ -123,43 +111,23 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         with open(file_path, "a") as f:
             f.write(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}\n")
         
-        
-        print(f"Correct: {correct}, Total: {total}, Accuracy: {accuracy}")
+        print(f"Correct: {correct}, Total: {total}")
 
         print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}")
-        #save mode weights
-        torch.save(model.state_dict(), f"{output_dir}/model.pth")
-        #save stats to output folder
-        accuracy = 100.* correct/total #TODO: add confusion matrix
-        file_path = f"{output_dir}/stats.txt"
-        if not os.path.exists(file_path):
-            with open(file_path, "w") as f:
-                pass
-
-        with open(file_path, "a") as f:
-            f.write(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}\n")
         
-        
-        print(f"Correct: {correct}, Total: {total}, Accuracy: {accuracy}")
-
-        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}")
-        #save mode weights
+         #save mode weights
         torch.save(model.state_dict(), f"{output_dir}/model.pth")
 
-        # Plot and save loss graph
-        plt.figure(figsize=(12, 7))
-        # Plot and save loss graph
+        # Plot and save loss plot
         plt.figure(figsize=(12, 7))
         plt.grid(True)
-        plt.plot(losses_train, label='Train Loss')
-        plt.plot(losses_val, label='Validation Loss')
         plt.plot(losses_train, label='Train Loss')
         plt.plot(losses_val, label='Validation Loss')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.legend()
-        plt.close()
         plt.savefig(f"{output_dir}/loss_plot.png")
+        plt.close()
         
         all_labels = np.array(all_labels)
         all_preds = np.array(all_preds)
@@ -203,34 +171,16 @@ def main():
         device = 'cuda'
     print(f'Using: {device}')
 
-    # Define transformations
-    #translation
-    #zooming
-    train_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(10),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
     #load the dataset
     images_dir = args.images
     json_path = args.labels
-    json_path = args.labels
-    train_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=train_transform)
-    test_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=test_transform)
+    train_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
+    test_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
 
     #load the dataloader
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDataset.collate_fn)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDataset.collate_fn)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
-
+    
     #load the model
     model = BinaryClassifier()
     model.to(device)

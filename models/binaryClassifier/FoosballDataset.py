@@ -162,11 +162,11 @@ class FoosballDataset(Dataset):
         #conmvert to tensor
         image = self.to_tensor(image)
         # Apply augmentations if training
-        if self.pixelAugmentations and self.train:
+        if self.pixelAugmentations and self.train and self.spatialAugmentations:
             augmented = self.pixelAugmentations(image=image.permute(1, 2, 0).numpy(),)  # Convert to HWC for Albumentations
+            augmented = self.spatialAugmentations(image=augmented['image'])  # Apply spatial augmentations
             image = torch.tensor(augmented['image']).permute(2, 0, 1).float()  # Convert back to CHW
         image = self.preprocess(image)  # Always preprocess the image
-
         return image
     
     def returnLabels(self, ball_exists, positive_region, negative_region):
