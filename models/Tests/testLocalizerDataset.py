@@ -127,6 +127,7 @@ def full_test():
         plt.show()
 
 def __main__():
+    """Run full test to see the issue with dataset"""
     test_getRegionWithBall_realData()
     test_get_new_coordinates()  
     full_test() 
