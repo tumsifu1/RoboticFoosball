@@ -20,8 +20,8 @@ dataset = FoosballDatasetLocalizer(json_path=json_path, images_dir=images_dir, t
 dataloader = DataLoader(dataset, batch_size=1, shuffle= True)
 #2304 × 1296
 
-def test_get_region_with_ball():
-    """Test the get_region_with_ball method."""
+def test_getRegionWithBall_realData():
+    """Test the get_region_with_ball method with real data."""
     img_name = "img_70.jpg"
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
@@ -107,39 +107,6 @@ def test_get_new_coordinates():
     plt.title(f"Test: Original ({x},{y}) -> New ({new_x},{new_y})")
     plt.show()
 
-    
-def visulize_image():
-    """Visualize a full image from the dataset."""
-    img_name = "img_79.jpg"
-    img_path = "data/images/" + img_name
-    image = Image.open(img_path).convert('RGB')
-    image = dataset.preProcessImage(image)
-    print(f"Image Shape After Preprocessing: {image.shape}")
-    ball_exists = True
-    #get x and why in the json at img_0.jpg
-    x = 0
-    y = 0
-    with open(json_path, 'r') as f:
-        data = json.load(f)  # Load JSON into 'data'
-
-    # 'data' is a list
-    for item in data:
-        if item.get("image") == img_name:  # Find the entry for "img_0.jpg"
-            x = item.get("x")
-            y = item.get("y")
-            print(f"x: {x}, y: {y}")
-            break
-    else:
-        print(f"Image {img_name} not found in the JSON data.")
-
-    image = unnormalize(image)
-    plt.imshow(image.permute(1, 2, 0))
-    plt.axis("off")
-    plt.title(f"Ball")
-    #remove pre process and normilization)
-    plt.scatter(x, y, c='r', s=50)
-    plt.show() 
-
 #loop through the dataloader and display the segments with ball see where the ball is
 def full_test():
     for image, x,y, ball_exists in dataloader:
@@ -160,9 +127,8 @@ def full_test():
         plt.show()
 
 def __main__():
-    #visulize_image()
-    #test_get_region_with_ball()
-    #test_get_new_coordinates()  
+    test_getRegionWithBall_realData()
+    test_get_new_coordinates()  
     full_test() 
 
 if __name__=="__main__":

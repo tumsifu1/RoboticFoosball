@@ -18,7 +18,7 @@ class FoosballDataset(Dataset):
     def __init__(self, images_dir, json_path, transform=None, train=True):
 
         self.train = train
-        self.grid_size = 4
+        self.GRID_SIZE = 4 # 4x4 grid
         self.images_dir = images_dir
         self.transform = transform
 
@@ -54,6 +54,7 @@ class FoosballDataset(Dataset):
         return len(self.data)
     
     def collate_fn( batch):
+        """turns data for getitem to tuple of tensors"""
         #flatten paired regions and labels
 
         regions = torch.cat([item['regions'] for item in batch], dim=0)
@@ -68,11 +69,14 @@ class FoosballDataset(Dataset):
         return torch.stack(regions),torch.tensor(labels)
     
     def getRegionWithBall(self, ball_exists, x, y, regions, region_height, region_width):
+        """returns the region containing the ball and the region index"""
         # These calculations are correct for a 4x4 grid and fixed dimensions
         # region_height = 1296 // 4 = 324
         # region_width = 2304 // 4 = 576
-        total_width = region_width * self.grid_size
-        total_height = region_height * (len(regions) // self.grid_size)
+
+        #for checking the total image dimensions
+        #total_width = region_width * self.GRID_SIZE
+        #total_height = region_height * (len(regions) // self.GRID_SIZE)
         #print(f"Total Image Dimensions: width={total_width}, height={total_height}")
 
         if ball_exists:
@@ -86,13 +90,13 @@ class FoosballDataset(Dataset):
             row_index = ball_y // region_height
             #print(f"Row Index: {row_index} ball_y: {ball_y} region_height: {region_height}")
             # Ensure row_index and col_index are within bounds
-            row_index = min(row_index, self.grid_size - 1)
-            col_index = min(col_index, self.grid_size - 1)
+            row_index = min(row_index, self.GRID_SIZE - 1)
+            col_index = min(col_index, self.GRID_SIZE - 1)
 
             # Calculate region_index
-            region_index = row_index * self.grid_size + col_index
+            region_index = row_index * self.GRID_SIZE + col_index
 
-            #print(f"self.grid_size: {self.grid_size}, Region Index: {region_index}")
+            #print(f"self.GRID_SIZE: {self.GRID_SIZE}, Region Index: {region_index}")
 
             if region_index < 0 or region_index >= len(regions):
                 raise IndexError(f"Invalid region_index: {region_index}. Valid range is 0 to {len(regions)-1}.")
@@ -106,6 +110,7 @@ class FoosballDataset(Dataset):
 
 
     def getRandomNegativeRegion(self,ball_exists, pos_region_index, regions):
+        """returns a random negative region for classification"""
             # Select a random negative (no ball) region
         if ball_exists:
             negative_indices = [i for i in range(len(regions)) if i != pos_region_index]
@@ -118,20 +123,21 @@ class FoosballDataset(Dataset):
         return negative_region
     
     def breakImageIntoRegions(self, image):
+        """Break the image into regions and return a list of regions"""
         _, height, width = image.shape
-        assert height % self.grid_size == 0, "Image height is not divisible by grid_size"
-        assert width % self.grid_size == 0, "Image width is not divisible by grid_size"
+        assert height % self.GRID_SIZE == 0, "Image height is not divisible by grid_size"
+        assert width % self.GRID_SIZE == 0, "Image width is not divisible by grid_size"
 
         # Divide the image into regions
         # Divide the image into regions
-        region_height = height // self.grid_size
-        region_width = width // self.grid_size
+        region_height = height // self.GRID_SIZE
+        region_width = width // self.GRID_SIZE
 
         # Divide the image into regions
         # Divide the image into regions
         regions = []
-        for i in range(self.grid_size):
-            for j in range(self.grid_size):
+        for i in range(self.GRID_SIZE):
+            for j in range(self.GRID_SIZE):
                 region = image[:, 
                             i * region_height:(i + 1) * region_height, # take all channels, take ith region height to i+1th region height
                             j * region_width:(j + 1) * region_width]
@@ -141,6 +147,7 @@ class FoosballDataset(Dataset):
     
     
     def setupGetItem(self, idx):
+        """Setup the __getitem__ method by loading the image and extracting the ball coordinates"""
         entry = self.data[idx]
         img_name = entry['image']
         ball_exists = entry['ball_exists']
@@ -150,7 +157,8 @@ class FoosballDataset(Dataset):
         #print(f"Image: {img_name}, Ball Exists: {ball_exists}")
         return image, ball_exists, x, y
     
-    def preProcessImage(self, image):
+    def preprocessImage(self, image):
+        """Preprocess the image by applying transformations and augmentations"""
         #conmvert to tensor
         image = self.to_tensor(image)
         # Apply augmentations if training
@@ -162,6 +170,7 @@ class FoosballDataset(Dataset):
         return image
     
     def returnLabels(self, ball_exists, positive_region, negative_region):
+        """for return the regions as a stack of tensors and the labels as a tensor"""
         positive_label = 1 if ball_exists else 0
         negative_label = 0
 
@@ -177,7 +186,7 @@ class FoosballDataset(Dataset):
         image, ball_exists, x, y = self.setupGetItem(idx)
         # Apply preprocessing to all data
         
-        image = self.preProcessImage(image)
+        image = self.preprocessImage(image)
         
         regions, region_width, region_height = self.breakImageIntoRegions(image)
         # Find positive (ball) region

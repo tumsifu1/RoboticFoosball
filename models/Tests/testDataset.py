@@ -4,8 +4,10 @@ import torch
 import json
 from torchvision import transforms
 from models.binaryClassifier.FoosballDataset import FoosballDataset
+from src.tools.unnormalize import unnormalize
 import matplotlib.pyplot as plt
 import cv2
+from PIL import Image
 json_path = "data/labels/labels.json"
 images_dir = "data/images"
 
@@ -19,17 +21,40 @@ dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=
 dataloader = DataLoader(dataset, batch_size=1, shuffle= False, collate_fn=FoosballDataset.collate_fn)
 print(f"Dataset size: {len(dataset)}")
 
-def unnormalize(image, mean, std):
-    """Undo normalization for visualization."""
-    mean = torch.tensor(mean).view(-1, 1, 1)
-    std = torch.tensor(std).view(-1, 1, 1)
-    return image * std + mean #tensor-wise math 
+def visulize_image():
+    """Visualize a full image from the dataset."""
+    img_name = "img_0.jpg"
+    img_path = "data/images/" + img_name
+    image = Image.open(img_path).convert('RGB')
+    image = dataset.preProcessImage(image)
+    print(f"Image Shape After Preprocessing: {image.shape}")
+    ball_exists = True
+    #get x and why in the json at img_0.jpg
+    x = 0
+    y = 0
+    with open(json_path, 'r') as f:
+        data = json.load(f)  # Load JSON into 'data'
 
+    # 'data' is a list
+    for item in data:
+        if item.get("image") == img_name:  # Find the entry for "img_0.jpg"
+            x = item.get("x")
+            y = item.get("y")
+            print(f"x: {x}, y: {y}")
+            break
+    else:
+        print(f"Image {img_name} not found in the JSON data.")
 
+    image = unnormalize(image)
+    plt.imshow(image.permute(1, 2, 0))
+    plt.axis("off")
+    plt.title(f"Ball")
+    #remove pre process and normilization)
+    plt.scatter(x, y, c='r', s=50)
+    plt.show() 
 
-# Assuming `dataloader` is defined and ready
-
-def test_dataloader(dataloader, mean, std):
+def test_dataloader():
+    """Test the dataloader by displaying images and labels."""
     for images, labels in dataloader:
         batch_size = images.shape[0]
         
@@ -40,7 +65,7 @@ def test_dataloader(dataloader, mean, std):
             print(labels[i])
 
             # Unnormalize the image
-            unnormalized_img = unnormalize(image.unsqueeze(0), mean, std)  # Add batch dim
+            unnormalized_img = unnormalize(image.unsqueeze(0))  # Add batch dim
             img = unnormalized_img.squeeze().permute(1, 2, 0).numpy()  # Convert to HWC
 
             # Convert to BGR format for OpenCV 
@@ -53,7 +78,8 @@ def test_dataloader(dataloader, mean, std):
             plt.show()
         
 def test_collate_fn():
-
+    """Test the collate function by creating a batch of images and labels and 
+        checking the output of mean alighns with the label."""
     batch = {
             "regions": torch.stack([
                 torch.ones(3, 224, 224),  # Positive region
@@ -68,6 +94,7 @@ def test_collate_fn():
             ]),
             "labels": torch.tensor([1, 0, 1, 0, 1, 0, 1, 0])
         }
+    
     randomized_images, randomized_labels = FoosballDataset.collate_fn([batch, batch])
     
     mean_to_label = {
@@ -87,10 +114,8 @@ def test_collate_fn():
         assert label.item() == expected_label, error_message
     print ("Test collate passed")
 
-def get_random_negative_region(regions, region_index):
-    pass 
-
-def test_getRegionWithBall():
+def test_getRegionWithBall_createdData():
+    """Test the getRegionWithBall with created data"""
     # Test parameters
     ball_exists = 1  # Ball is present
     x, y = 200, 200    # Ball coordinates
@@ -110,12 +135,10 @@ def test_getRegionWithBall():
     print("Test passed: getRegionWithBall correctly identified the region.")
 
 def __main__():
-    # Define mean and std for unnormalization
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
+    visulize_image()
     test_collate_fn()
-    test_getRegionWithBall()
-    test_dataloader(dataloader, mean, std)
+    test_getRegionWithBall_createdData()
+    test_dataloader()
 
 if __name__ == "__main__":
     __main__()
