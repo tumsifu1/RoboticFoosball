@@ -27,22 +27,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
     device = kwargs["device"]
     output_dir = kwargs["output"]
 
-    model.to(device)
-    #lists for trianign and val loss
-    losses_train = []
-    losses_val = []
-    print(f"{kwarg}: {kwargs[kwarg]}")
-    model = kwargs["model"]
-    optimizer = kwargs["optimizer"]
-    scheduler = kwargs["scheduler"]
-    loss_function = kwargs["loss_function"]
-    train_loader = kwargs["train"]
-    test_loader = kwargs["test"]
-    device = kwargs["device"]
-    output_dir = kwargs["output"]
-
-    model.to(device)
-    #lists for trianign and val loss
+    #lists for training and val loss
     losses_train = []
     losses_val = []
 
@@ -64,7 +49,6 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
             loss = loss_function(output, labels.unsqueeze(1).float()) #compute loss and add dimension to labels
             output = model(images) 
             
-            loss = loss_function(output, labels.unsqueeze(1).float()) #compute loss and add dimension to labels
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
@@ -187,7 +171,7 @@ def main():
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min')
-    loss_function = nn.BCEWithLogitsLoss() #mean squared for position 
+    loss_function = nn.BCEWithLogitsLoss()
 
     train(  
         epochs=args.epoch, 

@@ -1,7 +1,7 @@
 import sys
 import os
 from PIL import Image
-from models.BallLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
+from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
 from src.tools.unnormalize import unnormalize
 import torch
 from torch.utils.data import DataLoader
