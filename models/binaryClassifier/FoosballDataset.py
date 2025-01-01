@@ -22,8 +22,13 @@ class FoosballDataset(Dataset):
         self.images_dir = images_dir
         self.transform = transform
 
-        with open (json_path, 'r') as f:
-            self.data = json.load(f)
+        with open(json_path, 'r') as f:
+            raw_data = json.load(f)
+            # Transform dictionary to a list if necessary
+            if isinstance(raw_data, dict):
+                self.data = [{"image": key, **value} for key, value in raw_data.items()]
+            else:
+                self.data = raw_data
 
         
         self.preprocess = transforms.Compose([  # image is 1280x1280
@@ -148,6 +153,9 @@ class FoosballDataset(Dataset):
     
     def setupGetItem(self, idx):
         """Setup the __getitem__ method by loading the image and extracting the ball coordinates"""
+        if idx >= len(self.data):
+            raise IndexError(f"Index {idx} out of range for dataset with length {len(self.data)}")
+        #print(type(self.data))
         entry = self.data[idx]
         img_name = entry['image']
         ball_exists = entry['ball_exists']

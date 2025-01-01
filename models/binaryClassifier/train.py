@@ -49,7 +49,6 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
             output = model(images) 
             
             loss = loss_function(output, labels.unsqueeze(1).float()) #compute loss and add dimension to labels
-            output = model(images) 
             
             loss.backward()
             optimizer.step()
@@ -81,8 +80,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
                 all_preds.extend(pred.cpu().squeeze().tolist())
                 all_labels.extend(labels.cpu().tolist())
                 
-        val_loss /= len(test_loader)
-        val_loss = val_loss.item()
+        val_loss /= len(val_loader)
         losses_val.append(val_loss)
 
         #scheduler step
@@ -102,7 +100,10 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}")
         
          #save mode weights
-        torch.save(model.state_dict(), f"{output_dir}/model.pth")
+        torch.save(model.state_dict(), f"{output_dir}/model_epoch_{epoch+1}.pth")
+
+        if val_loss == min(losses_val):
+            torch.save(model.state_dict(), os.path.join(output_dir, "best_model.pth"))
 
         # Plot and save loss plot
         plt.figure(figsize=(12, 7))
@@ -161,7 +162,7 @@ def main():
     argParser.add_argument("-epoch", type=int, default=30, help="number of epochs")
     argParser.add_argument('-images', metavar='images_directory', type=str, help='path to images directory (default: ./data/image_data/images)', default='./data/images')
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
-    argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
+    argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=32)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
     args = argParser.parse_args()
 
@@ -171,7 +172,15 @@ def main():
     random.seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
-        
+
+        #test, train and val paths
+    val_images = "./data/val/images"
+    val_labels = "./data/val/labels/labels.json"
+    test_images = "./data/test/images"
+    test_labels = "./data/test/labels/labels.json"
+    train_images = "./data/train/images"
+    train_labels = "./data/train/labels/labels.json"
+
     #make sure output folder exists 
     if not os.path.exists(args.output):
         os.makedirs(args.output)
@@ -183,26 +192,18 @@ def main():
     print(f'Using: {device}')
 
     #load the dataset
-    images_dir = args.images
-    json_path = args.labels
+    #images_dir = args.images
+    #json_path = args.labels
 
-    dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
+    # Create new dataset instances for each split
+    train_dataset = FoosballDataset(json_path=train_labels, images_dir=train_images, transform=None, train=True)
+    val_dataset = FoosballDataset(json_path=val_labels, images_dir=val_images, transform=None, train=False)
+    test_dataset = FoosballDataset(json_path=test_labels, images_dir=test_images, transform=None, train=False)
 
-    # Split the dataset
-    train_size = int(0.8 * len(dataset))
-    val_size = int(0.1 * len(dataset))
-    test_size = len(dataset) - train_size - val_size
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
-    
-    train_dataset.dataset.train = True  # Enable train-specific transformations
-    val_dataset.dataset.train = False   # Disable train-specific transformations
-    test_dataset.dataset.train = False
-
-    #load the dataloaders
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDataset.collate_fn)
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
-    
+
     #load the model
     model = BinaryClassifier()
     model.to(device)

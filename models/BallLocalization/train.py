@@ -4,14 +4,12 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import os
-from torch.utils.data import DataLoader
-from torchvision import transforms, datasets
+from torch.utils.data import random_split, DataLoader
 from typing import Optional
-from models.ballLocalization.FoosballDatasetLocalizer import FoosballDataset
+from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
 from model import BallLocalization
 import numpy as np
 import random
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 def train(epochs: Optional[int] = 30, **kwargs) -> None:
     print("Starting training...")
@@ -24,6 +22,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
     loss_function = kwargs["loss_function"]
     train_loader = kwargs["train"]
     test_loader = kwargs["test"]
+    val_loader = kwargs["val"]
     device = kwargs["device"]
     output_dir = kwargs["output"]
 
@@ -35,7 +34,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         model.train()
         train_loss = 0
 
-        for image, x,y, _ in train_loader:
+        for image, x,y in train_loader:
             images = image
             labels = torch.stack((x, y), dim=1) #stack x and y coordinates
             # print(batch)
@@ -57,34 +56,37 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
     
         model.eval()
         val_loss = 0 
+        mse_total = 0
+        total = 0
         with torch.no_grad():
-            for image, x,y, _ in test_loader:
+            for image, x,y in val_loader:
                 images = image
                 labels = torch.stack((x, y), dim=1) #stack x and y coordinates
                 images, labels = images.to(device), labels.to(device)
 
                 output = model(images)
-        
-                #compute loss 
-                val_loss += loss_function(output,  labels.unsqueeze(1).float())
-    
-        val_loss /= len(test_loader)
-        val_loss = val_loss.item()
+                val_loss += loss_function(output, labels).item()
+                mse = ((output - labels) ** 2).mean().item()
+                mse_total += mse
+                total += 1
+
+        mse_average = mse_total / total 
+        val_loss /= len(val_loader)
         losses_val.append(val_loss)
         scheduler.step(val_loss)
 
         file_path = f"{output_dir}/stats.txt"
 
-        if not os.path.exists(file_path):
-            with open(file_path, "w") as f:
-                pass
-
         with open(file_path, "a") as f:
-            f.write(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} ")
+            f.write(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | MSE: {mse_average:.5f} | lr: {optimizer.param_groups[0]['lr']}\n")
         
-        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | Val Acc: {accuracy:.5f}")
+        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {train_loss:.5f} | Val Loss: {val_loss:.5f} | MSE: {mse_average:.5f}")
 
-        torch.save(model.state_dict(), f"{output_dir}/model.pth")
+        torch.save(model.state_dict(), f"{output_dir}/model_epoch_{epoch+1}.pth")
+
+
+        if val_loss == min(losses_val):
+            torch.save(model.state_dict(), os.path.join(output_dir, "best_model.pth"))
 
         # Plot and save loss plot
         plt.figure(figsize=(12, 7))
@@ -96,8 +98,35 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         plt.legend()
         plt.savefig(f"{output_dir}/loss_plot.png")
         plt.close()
-        
+
     print("Training complete.")
+    print("starting testing...")
+
+    #testing
+    test_mse = 0
+    total = 0
+    model.eval()
+    with torch.no_grad():
+        for images, x,y in test_loader:
+            images = image
+            labels = torch.stack((x, y), dim=1) #stack x and y coordinates
+            images, labels = images.to(device), labels.to(device)
+
+            output = model(images)
+            #confusion matrix
+            if output.size(0) != labels.size(0):
+                output = output[:labels.size(0)]
+            mse = ((output - labels) ** 2).mean().item()
+            test_mse += mse
+            total += 1
+
+    test_mse /= total
+    file_path = f"{output_dir}/test_stats.txt"
+    with open(file_path, "a") as f:
+        f.write(f" MSE: {test_mse:.5f}\n")
+
+    print(f"Test MSE: {test_mse}")
+
 def main():
 
     argParser = argparse.ArgumentParser()
@@ -107,6 +136,13 @@ def main():
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/ball_Localization')
     args = argParser.parse_args()
+    #test, train and val paths
+    val_images = "./data/val/images"
+    val_labels = "./data/val/labels/labels.json"
+    test_images = "./data/test/images"
+    test_labels = "./data/test/labels/labels.json"
+    train_images = "./data/train/images"
+    train_labels = "./data/train/labels/labels.json"
 
     #random seed for reproducibility
     torch.manual_seed(42)
@@ -125,24 +161,27 @@ def main():
         device = 'cuda'
     print(f'Using: {device}')
 
-    #load the dataset
-    images_dir = args.images
-    json_path = args.labels
-    train_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
-    test_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
-
-    #load the dataloader
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDataset.collate_fn)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
+    #load the dataset (done in the dataset class)
+    #images_dir = args.images
+    #json_path = args.labels
     
+    # Create new dataset instances for each split
+    train_dataset = FoosballDatasetLocalizer(json_path=train_labels, images_dir=train_images, transform=None, train=True)
+    val_dataset = FoosballDatasetLocalizer(json_path=val_labels, images_dir=val_images, transform=None, train=False)
+    test_dataset = FoosballDatasetLocalizer(json_path=test_labels, images_dir=test_images, transform=None, train=False)
+
+
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDatasetLocalizer.collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDatasetLocalizer.collate_fn)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDatasetLocalizer.collate_fn)
+
     #load the model
     model = BallLocalization()
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min')
-    loss_function = nn.MSELoss(size_average=None, reduce=None, reduction='mean')
-
+    loss_function = nn.MSELoss(reduction='mean')
 
     train(  
         epochs=args.epoch, 
@@ -151,6 +190,7 @@ def main():
         scheduler=scheduler,    
         loss_function=loss_function, 
         train=train_dataloader, 
+        val = val_dataloader,
         test=test_dataloader, 
         device=device,
         output=args.output,
