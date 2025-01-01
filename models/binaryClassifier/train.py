@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
+from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from FoosballDataset import FoosballDataset
 from model import BinaryClassifier
@@ -24,6 +25,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
     loss_function = kwargs["loss_function"]
     train_loader = kwargs["train"]
     test_loader = kwargs["test"]
+    val_loader = kwargs["val"]
     device = kwargs["device"]
     output_dir = kwargs["output"]
 
@@ -64,7 +66,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         correct = 0
         total = 0
         with torch.no_grad():
-            for images, labels in test_loader:
+            for images, labels in val_loader:
                 images, labels = images.to(device), labels.to(device)
 
                 output = model(images)
@@ -126,7 +128,32 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         print(f"Confusion matrix saved at: {cm_path}")
     
     print("Training complete.")
+    print("starting testing...")
 
+    #testing
+    test_labels = []
+    test_preds = []
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
+
+            output = model(images)
+            #confusion matrix
+            pred = torch.round(torch.sigmoid(output)) #convert to binary 
+            test_preds.extend(pred.cpu().squeeze().tolist())
+            test_labels.extend(labels.cpu().tolist())
+
+        test_labels = np.array(test_labels)
+        test_preds = np.array(test_preds)
+        # Compute and display confusion matrix
+        cm = confusion_matrix(test_labels, test_preds)
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+        disp.plot(cmap=plt.cm.Blues)
+        plt.title(f'Confusion Matrix Test')
+        cm_path = os.path.join(output_dir, f'confusion_matrix_test.png')
+        plt.savefig(cm_path)
+        plt.close()
+        print(f"Test confusion matrix saved at: {cm_path}")
 
 
 def main():
@@ -158,11 +185,22 @@ def main():
     #load the dataset
     images_dir = args.images
     json_path = args.labels
-    train_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
-    test_dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
 
-    #load the dataloader
+    dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=None)
+
+    # Split the dataset
+    train_size = int(0.8 * len(dataset))
+    val_size = int(0.1 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
+    
+    train_dataset.dataset.train = True  # Enable train-specific transformations
+    val_dataset.dataset.train = False   # Disable train-specific transformations
+    test_dataset.dataset.train = False
+
+    #load the dataloaders
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDataset.collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
     
     #load the model
@@ -180,6 +218,7 @@ def main():
         scheduler=scheduler,    
         loss_function=loss_function, 
         train=train_dataloader, 
+        val = val_dataloader,
         test=test_dataloader, 
         device=device,
         output=args.output,
