@@ -16,7 +16,6 @@ class FoosballDatasetLocalizer(FoosballDataset):
 
         return positive_regions, x_coords, y_coords
 
-        return regions, x_coords, y_coords
     def get_new_coordinates(self, x, y,region_width, region_height):
         #print("Get new coordinates")
         col_index = x // region_width
