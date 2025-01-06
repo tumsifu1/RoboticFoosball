@@ -45,13 +45,3 @@ class SnoutNet(nn.Module):
         # print("Shape After FC3:", X.shape)
 
         return X
-
-if __name__ == "__main__":
-    # Instantiate the model
-    model = SnoutNet()
-
-    # Create an input tensor with size (batch_size=1, channels=3, height=227, width=227)
-    input_tensor = torch.randn(1, 3, 227, 227)
-    # Pass the input through the model
-    output = model(input_tensor)
-
