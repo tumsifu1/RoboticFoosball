@@ -134,11 +134,11 @@ def test_getRegionWithBall_createdData():
 
     print("Test passed: getRegionWithBall correctly identified the region.")
 
-def __main__():
+def main():
     visulize_image()
     test_collate_fn()
     test_getRegionWithBall_createdData()
     test_dataloader()
 
 if __name__ == "__main__":
-    __main__()
+    main()

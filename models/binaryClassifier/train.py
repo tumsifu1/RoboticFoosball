@@ -167,11 +167,13 @@ def main():
     args = argParser.parse_args()
 
     #random seed for reproducibility
+    device = 'cpu'
     torch.manual_seed(42)
     np.random.seed(42)
     random.seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
+        device = 'cuda'
 
         #test, train and val paths
     val_images = "./data/val/images"
@@ -186,9 +188,6 @@ def main():
         os.makedirs(args.output)
 
     #check if cuda is available
-    device = 'cpu'
-    if torch.cuda.is_available():
-        device = 'cuda'
     print(f'Using: {device}')
 
     #load the dataset

@@ -206,3 +206,4 @@ class FoosballDataset(Dataset):
         # Return positive and negative samples
         return self.returnLabels(ball_exists, positive_region, negative_region)
         #print(f"Positive Region: {positive_region}, Negative Region: {negative_region}, Positive Label: {positive_label}, Negative Label: {negative_label}")
+        
