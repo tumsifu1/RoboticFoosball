@@ -163,3 +163,7 @@ cython_debug/
 
 # Source Video
 data/test.mp4
+
+data/images/
+
+data/labels/
