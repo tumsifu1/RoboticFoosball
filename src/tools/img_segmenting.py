@@ -9,6 +9,6 @@ vid = cv2.VideoCapture(args.v)
 img_counter = 0
 read, img = vid.read()
 while read:
-    cv2.imwrite(f"data/images_{(img_counter%3) + 1}/img_{img_counter}.jpg", img)
+    cv2.imwrite(f"data/images_notLabelled/img_{img_counter}.jpg", img)
     read, img = vid.read()
     img_counter += 1
