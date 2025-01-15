@@ -7,8 +7,8 @@ IMAGES_DIR = "data/images"
 LABELS_FILE = "data/labels/labels.json"
 OUTPUT_DIR = "data"  # will create train/, val/, test/ here
 
-TRAIN_RATIO = 0.7
-VAL_RATIO = 0.2
+TRAIN_RATIO = 0.8
+VAL_RATIO = 0.1
 TEST_RATIO = 0.1
 
 assert abs(TRAIN_RATIO + VAL_RATIO + TEST_RATIO - 1.0) < 1e-6, \

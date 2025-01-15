@@ -1,8 +1,2 @@
 
-Each teammate will have a command to start the labeling data process. Each script will save outputs to their assigned folder
-
-Aaron: python src/labelling_tool.py --image_dir ./data/images_1 --output_dir ./data/labelled_images_1 --output_json ./data/labelled_data1.json
-
-Daniel: python src/labelling_tool.py --image_dir ./data/images_2 --output_dir ./data/labelled_images_2 --output_json ./data/labelled_data2.json
-
-Vid: python src/labelling_tool.py --image_dir ./data/images_3 --output_dir ./data/labelled_images_3 --output_json ./data/labelled_data3.json
+python src/tools/labelling_tool.py
