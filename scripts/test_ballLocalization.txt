@@ -1,0 +1,2 @@
+
+python models/ballLocalization/test.py -images data/train/images -labels data/train/labels/labels.json  

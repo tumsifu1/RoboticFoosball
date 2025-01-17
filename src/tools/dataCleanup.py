@@ -3,8 +3,8 @@ import os
 import shutil
 
 json_path = 'data/labels/labels.json'
-source_dir = 'data/image_data/images'
-destination_dir = 'data/image_data/images_1'
+source_dir = 'data/images'
+destination_dir = 'data/not_labelled'
 images_moved = 'data/images_moved.txt'
 missed_files = 'data/missing_files.txt'
 
@@ -30,10 +30,9 @@ def process_and_move(json_path, source_dir, destination_dir):
     data = load_json(json_path)
     print("Processing data...")
     for entry in data:
-        x = entry.get('x')
-        y = entry.get('y')
+        ball_exists = entry.get('ball_exists')
         image_name = entry.get('image')
-        if x > 2303 or y > 1295:
+        if ball_exists == 0:
             moved_images.append(image_name)
             source_path = os.path.join(source_dir, image_name)
             destination_path = os.path.join(destination_dir, image_name)
