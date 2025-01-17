@@ -7,7 +7,7 @@ import os
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
-from model import BallLocalization
+from models.ballLocalization.model_snoutNetBase import BallLocalization
 import numpy as np
 import random
 
