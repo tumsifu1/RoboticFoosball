@@ -8,10 +8,6 @@ class BallLocalization(SnoutNet):
         super(BallLocalization, self).__init__()
         self.input_shape = (3, 2304, 1296)
         
-        # Dynamically compute the flattened size
-        flattened_size = self._get_flattened_size(self.input_shape)
-        print(f"Dynamically computed flattened size: {flattened_size}")
-        
         # Redefine fully connected layers with the correct size
         self.fc1 = nn.Linear(13824, 1024)
         self.fc2 = nn.Linear(1024, 1024)
