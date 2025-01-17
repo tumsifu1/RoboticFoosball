@@ -7,7 +7,7 @@ import os
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
-from model import BallLocalization
+from models.ballLocalization.model_snoutNetBase import BallLocalization
 import numpy as np
 import random
 
@@ -100,32 +100,7 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         plt.close()
 
     print("Training complete.")
-    print("starting testing...")
 
-    #testing
-    test_mse = 0
-    total = 0
-    model.eval()
-    with torch.no_grad():
-        for images, x,y in test_loader:
-            images = image
-            labels = torch.stack((x, y), dim=1) #stack x and y coordinates
-            images, labels = images.to(device), labels.to(device)
-
-            output = model(images)
-            #confusion matrix
-            if output.size(0) != labels.size(0):
-                output = output[:labels.size(0)]
-            mse = ((output - labels) ** 2).mean().item()
-            test_mse += mse
-            total += 1
-
-    test_mse /= total
-    file_path = f"{output_dir}/test_stats.txt"
-    with open(file_path, "a") as f:
-        f.write(f" MSE: {test_mse:.5f}\n")
-
-    print(f"Test MSE: {test_mse}")
 
 def main():
 

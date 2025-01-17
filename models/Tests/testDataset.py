@@ -21,12 +21,12 @@ dataset = FoosballDataset(json_path=json_path, images_dir=images_dir, transform=
 dataloader = DataLoader(dataset, batch_size=1, shuffle= False, collate_fn=FoosballDataset.collate_fn)
 print(f"Dataset size: {len(dataset)}")
 
-def visulize_image():
+def visulize_image(): #You must comment out to tensor in the preprocess
     """Visualize a full image from the dataset."""
-    img_name = "img_0.jpg"
+    img_name = "img_2818.jpg"
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
-    image = dataset.preProcessImage(image)
+    image = dataset.preprocessImage(image)
     print(f"Image Shape After Preprocessing: {image.shape}")
     ball_exists = True
     #get x and why in the json at img_0.jpg
@@ -136,9 +136,9 @@ def test_getRegionWithBall_createdData():
 
 def main():
     visulize_image()
-    test_collate_fn()
-    test_getRegionWithBall_createdData()
-    test_dataloader()
+    #test_collate_fn()
+    #test_getRegionWithBall_createdData()
+    #test_dataloader()
 
 if __name__ == "__main__":
     main()

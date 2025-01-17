@@ -20,12 +20,12 @@ dataset = FoosballDatasetLocalizer(json_path=json_path, images_dir=images_dir, t
 dataloader = DataLoader(dataset, batch_size=1, shuffle= True)
 #2304 × 1296
 
-def test_getRegionWithBall_realData():
+def test_getRegionWithBall_realData(): #You must comment out to tensor in the preprocess
     """Test the get_region_with_ball method with real data."""
-    img_name = "img_70.jpg"
+    img_name = "img_2818.jpg"
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
-    image = dataset.preProcessImage(image)
+    image = dataset.preprocessImage(image)
     print(f"Image Shape After Preprocessing: {image.shape}")
     ball_exists = True
     #get x and why in the json at img_0.jpg
@@ -55,12 +55,12 @@ def test_getRegionWithBall_realData():
     #remove pre process and normilization)
     plt.show()
             
-def test_get_new_coordinates():
+def test_get_new_coordinates():#You must comment out to tensor in the preprocess
     """Test the get_new_coordinates method without the full dataloader"""
     img_name = "img_70.jpg"
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
-    image = dataset.preProcessImage(image)
+    image = dataset.preprocessImage(image)
     ball_exists = True 
     x = 0
     y = 0
@@ -128,8 +128,8 @@ def full_test():
 
 def __main__():
     """Run full test to see the issue with dataset"""
-    test_getRegionWithBall_realData()
-    test_get_new_coordinates()  
+    #test_getRegionWithBall_realData()
+    #test_get_new_coordinates()  
     full_test() 
 
 if __name__=="__main__":

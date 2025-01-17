@@ -32,7 +32,7 @@ class FoosballDataset(Dataset):
 
         
         self.preprocess = transforms.Compose([  # image is 1280x1280
-            #transforms.ToTensor(),           # Convert to PyTorch tensor (C, H, W)
+            #transforms.ToTensor(),           # Convert to PyTorch tensor (C, H, W) comment out when testing
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize
         ])
 

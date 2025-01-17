@@ -3,7 +3,7 @@ import json
 import os
 import argparse
 import shutil
-
+import re
 
 def move_image(image_dir, output_dir, image_name):
     """Move an image from one directory to another."""
@@ -82,8 +82,9 @@ def discard_image(args, labeled_data, image_files, img_index, zoom_state):
     process_next_image(args, None, image_files, img_index, zoom_state)
 
 def write_to_json(data, file):
+    output_file = os.path.join(file, "labels.json")
     if data is not None:
-        with open(file, "a") as f:
+        with open(output_file, "a") as f:
             json.dump(data, f, indent=4)
         print(f"Data saved to {file}.")
 
@@ -101,18 +102,23 @@ def process_next_image(args, labeled_data, image_files, img_index, zoom_state):
         write_to_json(labeled_data, args.output_json)
         cv2.destroyAllWindows()
 
+def numerical_sort(filename):
+    match = re.search(r'img_(\d+)', filename)
+    return int(match.group(1)) if match else float('inf')
+
 def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Image Labeling Tool with Zoom Feature")
-    parser.add_argument("--image_dir", required=True, help="Directory with images to label")
-    parser.add_argument("--output_dir", required=True, help="Directory to save labeled images")
-    parser.add_argument("--output_json", required=True, help="Path to save JSON file with labels")
+    parser.add_argument("--image_dir", default= "data/not_labelled/", help="Directory with images to label")
+    parser.add_argument("--output_dir", default="data/images/", help="Directory to save labeled images")
+    parser.add_argument("--output_json", default="data/labels", help="Path to save JSON file with labels")
     args = parser.parse_args()
 
     # Initialize variables
     labeled_data = []
     img_index = [-1]  # Mutable index for the current image
     image_files = [f for f in os.listdir(args.image_dir) if f.endswith(".jpg") or f.endswith(".png")]
+    image_files.sort(key=numerical_sort)
     zoom_state = {"level": 0, "center": None, "current_image": None}  # Track zoom level and current image
 
     cv2.namedWindow("Labeling Tool")
@@ -124,6 +130,8 @@ def main():
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
+    if not os.path.exists(args.output_json):
+        os.makedirs(args.output_json)
 
     print("Instructions:")
     print("- Left Click: Label ball on image")

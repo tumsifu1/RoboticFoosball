@@ -129,32 +129,6 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         print(f"Confusion matrix saved at: {cm_path}")
     
     print("Training complete.")
-    print("starting testing...")
-
-    #testing
-    test_labels = []
-    test_preds = []
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images, labels = images.to(device), labels.to(device)
-
-            output = model(images)
-            #confusion matrix
-            pred = torch.round(torch.sigmoid(output)) #convert to binary 
-            test_preds.extend(pred.cpu().squeeze().tolist())
-            test_labels.extend(labels.cpu().tolist())
-
-        test_labels = np.array(test_labels)
-        test_preds = np.array(test_preds)
-        # Compute and display confusion matrix
-        cm = confusion_matrix(test_labels, test_preds)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-        disp.plot(cmap=plt.cm.Blues)
-        plt.title(f'Confusion Matrix Test')
-        cm_path = os.path.join(output_dir, f'confusion_matrix_test.png')
-        plt.savefig(cm_path)
-        plt.close()
-        print(f"Test confusion matrix saved at: {cm_path}")
 
 
 def main():
