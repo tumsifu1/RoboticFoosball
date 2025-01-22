@@ -1,13 +1,21 @@
+import sys
+import os
+
+# Move up two levels to add project root to sys.path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(project_root)
+
+
 import torch
 import argparse
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
-import os
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
-from models.ballLocalization.model_snoutNetBase import BallLocalization
+#from models.ballLocalization.model_snoutNetBase import BallLocalization
+from models.ballLocalization.model_mobileNetV3Base import BallLocalization
 import numpy as np
 import random
 
@@ -110,6 +118,7 @@ def main():
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/ball_Localization')
+    argParser.add_argument('-num_workers', metavar='num_workers', type=int, help='number of workers for dataloader', default=2)
     args = argParser.parse_args()
     #test, train and val paths
     val_images = "./data/val/images"
@@ -118,7 +127,7 @@ def main():
     test_labels = "./data/test/labels/labels.json"
     train_images = "./data/train/images"
     train_labels = "./data/train/labels/labels.json"
-
+    number_workers = args.num_workers
     #random seed for reproducibility
     torch.manual_seed(42)
     np.random.seed(42)
@@ -146,9 +155,9 @@ def main():
     test_dataset = FoosballDatasetLocalizer(json_path=test_labels, images_dir=test_images, transform=None, train=False)
 
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDatasetLocalizer.collate_fn)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDatasetLocalizer.collate_fn)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDatasetLocalizer.collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True,num_workers = number_workers, collate_fn=FoosballDatasetLocalizer.collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, num_workers = number_workers, collate_fn=FoosballDatasetLocalizer.collate_fn)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, num_workers = number_workers, collate_fn=FoosballDatasetLocalizer.collate_fn)
 
     #load the model
     model = BallLocalization()

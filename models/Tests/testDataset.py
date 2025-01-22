@@ -8,8 +8,8 @@ from src.tools.unnormalize import unnormalize
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
-json_path = "data/labels/labels.json"
-images_dir = "data/images"
+json_path = "data/train/labels/labels.json"
+images_dir = "data/train/images"
 
 test_transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -23,27 +23,20 @@ print(f"Dataset size: {len(dataset)}")
 
 def visulize_image(): #You must comment out to tensor in the preprocess
     """Visualize a full image from the dataset."""
-    img_name = "img_2818.jpg"
+    img_name = "img_2561.jpg"
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
     image = dataset.preprocessImage(image)
-    print(f"Image Shape After Preprocessing: {image.shape}")
     ball_exists = True
-    #get x and why in the json at img_0.jpg
     x = 0
     y = 0
     with open(json_path, 'r') as f:
-        data = json.load(f)  # Load JSON into 'data'
+        data = json.load(f)
 
-    # 'data' is a list
-    for item in data:
-        if item.get("image") == img_name:  # Find the entry for "img_0.jpg"
-            x = item.get("x")
-            y = item.get("y")
-            print(f"x: {x}, y: {y}")
-            break
-    else:
-        print(f"Image {img_name} not found in the JSON data.")
+    ballData = data[img_name]
+
+    x = ballData["x"]
+    y = ballData["y"]
 
     image = unnormalize(image)
     plt.imshow(image.permute(1, 2, 0))
@@ -70,7 +63,6 @@ def test_dataloader():
 
             # Convert to BGR format for OpenCV 
             img_bgr = cv2.cvtColor((img * 255).astype("uint8"), cv2.COLOR_RGB2BGR)
-
             # Display the image
             plt.imshow(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
             plt.axis("off")
@@ -135,10 +127,10 @@ def test_getRegionWithBall_createdData():
     print("Test passed: getRegionWithBall correctly identified the region.")
 
 def main():
-    visulize_image()
+    #visulize_image()
     #test_collate_fn()
     #test_getRegionWithBall_createdData()
-    #test_dataloader()
+    test_dataloader()
 
 if __name__ == "__main__":
     main()

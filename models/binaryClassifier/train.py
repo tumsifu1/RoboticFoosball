@@ -1,9 +1,14 @@
+import sys
+import os
+
+# Get the absolute path of the current script's directory
+project_root = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(project_root)
 import torch
 import argparse
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
-import os
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 from torch.utils.data import random_split, DataLoader
@@ -138,6 +143,7 @@ def main():
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=32)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
+    argParser.add_argument('-num_workers', metavar='num_workers', type=int, help='number of workers for dataloader', default=2)
     args = argParser.parse_args()
 
     #random seed for reproducibility
@@ -148,7 +154,7 @@ def main():
     if torch.cuda.is_available():
         torch.cuda.manual_seed(42)
         device = 'cuda'
-
+    number_workers = args.num_workers
         #test, train and val paths
     val_images = "./data/val/images"
     val_labels = "./data/val/labels/labels.json"
@@ -173,9 +179,9 @@ def main():
     val_dataset = FoosballDataset(json_path=val_labels, images_dir=val_images, transform=None, train=False)
     test_dataset = FoosballDataset(json_path=test_labels, images_dir=test_images, transform=None, train=False)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDataset.collate_fn)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, collate_fn=FoosballDataset.collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, num_workers=number_workers ,collate_fn=FoosballDataset.collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch, shuffle=False, num_workers= number_workers, collate_fn=FoosballDataset.collate_fn)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=False, num_workers = number_workers, collate_fn=FoosballDataset.collate_fn)
 
     #load the model
     model = BinaryClassifier()

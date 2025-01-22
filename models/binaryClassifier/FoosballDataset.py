@@ -2,17 +2,12 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
 import os
 import json
 import torch
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-import random
-import sys
 import os
-from src.tools.unnormalize import unnormalize
 
 class FoosballDataset(Dataset): 
     def __init__(self, images_dir, json_path, transform=None, train=True):
@@ -135,8 +130,8 @@ class FoosballDataset(Dataset):
 
         # Divide the image into regions
         # Divide the image into regions
-        region_height = height // self.GRID_SIZE
-        region_width = width // self.GRID_SIZE
+        region_height = height // self.GRID_SIZE # 1296 // 4 = 324
+        region_width = width // self.GRID_SIZE # 2304 // 4 = 576
 
         # Divide the image into regions
         # Divide the image into regions
@@ -158,12 +153,18 @@ class FoosballDataset(Dataset):
         #print(type(self.data))
         entry = self.data[idx]
         img_name = entry['image']
+        img_name = str(img_name)
+
         ball_exists = entry['ball_exists']
         x, y = entry['x'],  entry['y']
+
         img_path = os.path.join(self.images_dir, img_name)
         image = Image.open(img_path).convert('RGB')
         #print(f"Image: {img_name}, Ball Exists: {ball_exists}")
-        return image, ball_exists, x, y
+
+        if x == 1:
+            raise ValueError(f"Invalid coordinates at setUpgetItem: ({x}, {y})")
+        return image, ball_exists, x, y, img_name
     
     def preprocessImage(self, image):
         """Preprocess the image by applying transformations and augmentations"""
