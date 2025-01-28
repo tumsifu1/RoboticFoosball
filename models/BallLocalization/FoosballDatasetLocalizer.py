@@ -23,7 +23,7 @@ class FoosballDatasetLocalizer(FoosballDataset):
         # Apply augmentations if training
         if self.pixelAugmentations and self.spatialAugmentations and self.train:
             image = self.pixelAugmentations(image=image)['image']  # Apply pixel-level augmentations
-            image = self.spatialAugmentations(image=image)['image']  # Apply spatial augmentations
+            #image = self.spatialAugmentations(image=image)['image']  # Apply spatial augmentations (removed because they need to be applied)
         
         #conmvert to tensor
         image = self.to_tensor(image).float()
@@ -53,7 +53,7 @@ class FoosballDatasetLocalizer(FoosballDataset):
         #plt.show()
         image = self.preprocessImage(image)
 
-        regions,region_width, region_height = self.brsaaeakImageIntoRegions(image)
+        regions,region_width, region_height = self.breakImageIntoRegions(image)
         positive_region, region_index = self.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
         new_x, new_y = self.get_new_coordinates(x, y, region_width, region_height)
         return positive_region, new_x, new_y, ball_exists, img_name

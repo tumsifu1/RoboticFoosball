@@ -22,7 +22,7 @@ dataloader = DataLoader(dataset, batch_size=1, shuffle= True, collate_fn=Foosbal
 
 def test_getRegionWithBall_realData(): #You must comment out to tensor in the preprocess
     """Test the get_region_with_ball method with real data."""
-    img_name = "img_925.jpg"
+    img_name = "img_3.jpg" #925
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
     image = dataset.preprocessImage(image)

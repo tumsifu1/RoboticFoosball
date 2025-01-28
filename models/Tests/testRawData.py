@@ -25,26 +25,31 @@ image_files.sort(key=numerical_sort)
 # Process each image
 for img_name in image_files:
     dataset = FoosballDatasetLocalizer(json_path=json_path, images_dir=images_dir, transform=None)
+
     img_path = os.path.join(images_dir, img_name)
     image = Image.open(img_path).convert('RGB')
-    img_index[0] += 1
+    
 
     # Load JSON data
     with open(json_path, 'r') as f:
         data = json.load(f)
     ballData = data[img_name]
 
-    x, y = ballData["x"], ballData["y"]
-    labeled_data.append((image, x, y))
+    old_x, old_y = ballData["x"], ballData["y"]
+    labeled_data.append((image, old_x, old_y))
 
-    new_x, new_y = dataset.get_new_coordinates(x, y, 224, 224)
+    
 
     img_arr = np.array(image)
+    
     pre_image = dataset.preprocessImage(image)
 
     # Break image into regions and find region containing ball
     regions, region_width, region_height = dataset.breakImageIntoRegions(pre_image)
-    _, region_index = dataset.getRegionWithBall(1, x, y, regions, region_height, region_width)
+    new_x, new_y = dataset.get_new_coordinates(old_x, old_y, region_width, region_height)
+    _, region_index = dataset.getRegionWithBall(1, old_x, old_y, regions, region_height, region_width)
+
+    region_wball = regions[region_index]
 
     # Grid display parameters
     ROWS, COLS = 4, 4
@@ -60,9 +65,12 @@ for img_name in image_files:
 
             if row * COLS + col == region_index:
                 # Use the corresponding image from the regions array
-                segment = img_arr[y_start:y_end, x_start:x_end]
-                
+                segment = region_wball
 
+                segment = unnormalize(segment)
+                segment = segment.squeeze().permute(1, 2, 0).numpy()
+                segment = np.array(segment)
+                
                 # Display the updated region with contours
                 ax[row, col].imshow(cv2.cvtColor(segment, cv2.COLOR_BGR2RGB))
 
