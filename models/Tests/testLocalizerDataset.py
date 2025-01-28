@@ -9,20 +9,20 @@ from torchvision import transforms
 import cv2
 import matplotlib.pyplot as plt
 import json
-json_path = "data/labels/labels.json"
-images_dir = "data/images"
+json_path = "data/train/labels/labels.json"
+images_dir = "data/train/images/"
 
 test_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor()
 ])
 dataset = FoosballDatasetLocalizer(json_path=json_path, images_dir=images_dir, transform=test_transform)
-dataloader = DataLoader(dataset, batch_size=1, shuffle= True)
+dataloader = DataLoader(dataset, batch_size=1, shuffle= True, collate_fn=FoosballDatasetLocalizer.collate_fn)
 #2304 × 1296
 
 def test_getRegionWithBall_realData(): #You must comment out to tensor in the preprocess
     """Test the get_region_with_ball method with real data."""
-    img_name = "img_2818.jpg"
+    img_name = "img_3.jpg" #925
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
     image = dataset.preprocessImage(image)
@@ -32,33 +32,31 @@ def test_getRegionWithBall_realData(): #You must comment out to tensor in the pr
     x = 0
     y = 0
     with open(json_path, 'r') as f:
-        data = json.load(f)  # Load JSON into 'data'
+        data = json.load(f)
 
-    # 'data' is a list
-    for item in data:
-        if item.get("image") == img_name:  # Find the entry for "img_0.jpg"
-            x = item.get("x")
-            y = item.get("y")
-            print(f"x: {x}, y: {y}")
-            break
-    else:
-        print(f"Image {img_name} not found in the JSON data.")
+    ballData = data[img_name]
 
+    x = ballData["x"]
+    y = ballData["y"]
 
     regions, region_width, region_height = dataset.breakImageIntoRegions(image)
-    positive_region, _ = dataset.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
+    positive_region, region_index = dataset.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
+    new_x, new_y = dataset.get_new_coordinates(x, y, region_width, region_height)
     positive_region = unnormalize(positive_region)
 
     plt.imshow(positive_region.permute(1, 2, 0))
+
     plt.axis("off")
-    plt.title(f"Ball Region")
+    plt.title(f"Ball Region and index: {region_index}")
+    plt.xlabel(f"Original ({x},{y}) -> New ({new_x},{new_y})")
+    plt.scatter(new_x, new_y, c='r', s=50, label='Ball')
     #remove pre process and normilization)
     plt.show()
             
 def test_get_new_coordinates():#You must comment out to tensor in the preprocess
     """Test the get_new_coordinates method without the full dataloader"""
-    img_name = "img_70.jpg"
-    img_path = "data/images/" + img_name
+    img_name = "img_4033.jpg"
+    img_path = images_dir + img_name
     image = Image.open(img_path).convert('RGB')
     image = dataset.preprocessImage(image)
     ball_exists = True 
@@ -67,15 +65,9 @@ def test_get_new_coordinates():#You must comment out to tensor in the preprocess
     with open(json_path, 'r') as f:
         data = json.load(f)  # Load JSON into 'data'
 
-    # 'data' is a list
-    for item in data:
-        if item.get("image") == img_name:  # Find the entry for "img_0.jpg"
-            x = item.get("x")
-            y = item.get("y")
-            print(f"x: {x}, y: {y}")
-            break
-    else:
-        print(f"Image {img_name} not found in the JSON data.")
+    ballData = data[img_name]  # Get the ball data for the image
+    x = ballData["x"]  # Get the x-coordinate of the ball
+    y = ballData["y"]  # Get the y-coordinate of the ball
 
     region_width = 576  # 2304 / 4
     region_height = 324  # 1296 / 4
@@ -109,28 +101,27 @@ def test_get_new_coordinates():#You must comment out to tensor in the preprocess
 
 #loop through the dataloader and display the segments with ball see where the ball is
 def full_test():
-    for image, x,y, ball_exists in dataloader:
+    for image, x,y, img_name in dataloader:
         
         # Unnormalize the image
         unnormalized_img = unnormalize(image.unsqueeze(0))  # Add batch dim
         img = unnormalized_img.squeeze().permute(1, 2, 0).numpy()  # Convert to HWC
-
-        # Convert to BGR format for OpenCV 
+        print(f"x: {x}, y: {y}")
         img_bgr = cv2.cvtColor((img * 255).astype("uint8"), cv2.COLOR_RGB2BGR)
-
+        
         # Display the image
         plt.imshow(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
         #plt.scatter(x, y, c='red', label='Original')
         plt.scatter(x, y, c='blue', label='New')
-        plt.legend()
+        plt.title(f"Image: {img_name}")
         plt.axis("off")
         plt.show()
 
 def __main__():
     """Run full test to see the issue with dataset"""
-    #test_getRegionWithBall_realData()
+    test_getRegionWithBall_realData()
     #test_get_new_coordinates()  
-    full_test() 
+    #full_test() 
 
 if __name__=="__main__":
     __main__()

@@ -1,9 +1,14 @@
+import sys
+import os
+
+# Get the absolute path of the current script's directory
+project_root = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(project_root)
 import torch
 import argparse
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
-import os
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from FoosballDataset import FoosballDataset
