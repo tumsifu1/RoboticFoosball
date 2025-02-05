@@ -55,11 +55,8 @@ class FoosballDatasetLocalizer(FoosballDataset):
             return positive_region_resized
     
     def rescale_cordinates(self, old_x, old_y, region_width, region_height):
-        x_scale = 224/region_width
-        y_scale = 224/region_height
-
-        new_x = old_x * x_scale
-        new_y = old_y * y_scale
+        new_x = 224/region_width
+        new_y = 224/region_height
 
         return new_x, new_y
     

@@ -18,6 +18,7 @@ from models.ballLocalization.model_mobileNetV3Base import BallLocalization
 from src.tools import unnormalize
 import numpy as np
 import random
+import torch.nn.functional as F
 
 def test(epochs: Optional[int] = 30, **kwargs) -> None:
     print("Starting training...")
@@ -37,29 +38,55 @@ def test(epochs: Optional[int] = 30, **kwargs) -> None:
     model.eval()
     with torch.no_grad():
         for image, x, y in test_loader:
-            # Move tensors to device
+            # Move tensors to the device
             image, x, y = image.to(device), x.to(device), y.to(device)
-
-            # Forward pass
+            
+            # In your training pipeline you resized the positive region to 224x224.
+            # For visualization, you want to scale it back to its original region size.
+            # For example, if your regions were originally 576 (W) x 324 (H):
+            original_region_size = (324, 576)  # (height, width)
+            rescaled_img = rescale_image(image, original_region_size)
+            
+            # Forward pass: the model expects a 224x224 image, so use the original 'image'
             output = model(image)
-
-            print(f"Output Shape: {output.shape}")  # Should be (batch_size, 2)
-
-            # Extract single instance from batch
-            img = image[0].permute(1, 2, 0).cpu().numpy()  # Convert to NumPy (H, W, C)
-            actual_x, actual_y = x[0].cpu().item(), y[0].cpu().item()  # Extract ground truth
-            predicted_x, predicted_y = output[0, 0].cpu().item(), output[0, 1].cpu().item()  # Extract predictions
-
-            print(f"Label vs Prediction: Actual ({actual_x}, {actual_y}), Predicted ({predicted_x}, {predicted_y})")
-
-            # Plot the image and points
-            plt.imshow(img)
-            plt.scatter([actual_x], [actual_y], color='red', marker='x', label='Actual')  # Actual point
-            plt.scatter([predicted_x], [predicted_y], color='blue', marker='o', label='Predicted')  # Predicted point
+            print(f"Output Shape: {output.shape}")  # Expected: (batch_size, 2)
+            
+            # Extract the first instance from the batch.
+            # Note: x and y are already in the 224-space if you scaled them during __getitem__.
+            actual_x, actual_y = x[0].item(), y[0].item()
+            predicted_x, predicted_y = output[0, 0].item(), output[0, 1].item()
+            print(f"Label vs Prediction Before rescaled: Actual ({actual_x}, {actual_y}), Predicted ({predicted_x}, {predicted_y})")
+            
+            # Rescale coordinates from the 224 space back to the original region dimensions.
+            rescaled_actual_x, rescaled_actual_y = rescale_coordinates(actual_x, actual_y, region_width=576, region_height=324)
+            rescaled_pred_x, rescaled_pred_y = rescale_coordinates(predicted_x, predicted_y, region_width=576, region_height=324)
+            
+            print(f"Label vs Prediction: Actual ({rescaled_actual_x}, {rescaled_actual_y}), Predicted ({rescaled_pred_x}, {rescaled_pred_y})")
+            
+            # Prepare the image for plotting.
+            img_np = rescaled_img[0].permute(1, 2, 0).cpu().numpy()
+            plt.imshow(img_np.astype('uint8'))
+            plt.scatter([rescaled_actual_x], [rescaled_actual_y], color='red', marker='x', label='Actual')
+            plt.scatter([rescaled_pred_x], [rescaled_pred_y], color='blue', marker='o', label='Predicted')
             plt.legend()
-            plt.show()  # Display the image
+            plt.show()
+            
+            # Break after one sample for debugging.
 
-              # Only visualize one sample for nowhe loop after processing the first image
+
+def rescale_coordinates(scaled_x, scaled_y, region_width, region_height):
+
+    new_x = scaled_x * region_width 
+    new_y = scaled_y * region_height 
+    return new_x, new_y
+
+def rescale_image(image_tensor, target_size):
+
+    if image_tensor.dim() == 3:  # (C, 224, 224) → add batch dim.
+        image_tensor = image_tensor.unsqueeze(0)
+    # Interpolate to the target size
+    rescaled = F.interpolate(image_tensor, size=target_size, mode='bilinear', align_corners=False)
+    return rescaled
 
 def main():
 

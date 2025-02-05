@@ -43,6 +43,13 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         train_loss = 0
 
         for image, x,y in train_loader:
+            image, x, y = image.to(device), x.to(device), y.to(device)
+            
+            output = model(image)
+            
+            print(f"Predictions: {output[:5]}")
+            print(f"Targets: {x[:5], y[:5]}")
+            break  # Only print one batch
             images = image
             labels = torch.stack((x, y), dim=1) #stack x and y coordinates
             # print(batch)
