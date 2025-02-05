@@ -33,17 +33,17 @@ class FoosballDataset(Dataset):
 
         #pixel augmentations for training classifer model
         self.pixelAugmentations = A.Compose([
-            A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.3),  # Subtle brightness/contrast tweaks
-            A.GaussNoise(std_range=(0.0,0.1),mean_range=(0,0), p=0.2),  # Reduced noise intensity and probability
-            #A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10, val_shift_limit=0.5, p=0.2),  # Gentle color adjustments
-            A.Blur(blur_limit=3, p=0.1)  # Very occasional slight blur
+            A.RandomBrightnessContrast(brightness_limit=(-0.2,0.1), contrast_limit=(-0.2,0.2), p=0.3),  # Subtle brightness/contrast tweaks
+            A.GaussNoise(std_range=(0.0,0.5),mean_range=(0,0), p=0.2),  # Reduced noise intensity and probability
+            A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10, val_shift_limit=0.5, p=0.2),  # Gentle color adjustments
+            A.Blur(blur_limit=(3,7), p=0.5)  # Very occasional slight blur
         ])
 
         #spatial augmentations for training localizer model
         self.spatialAugmentations = A.Compose(
             [
             A.HorizontalFlip(p=0.5),
-            A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=0, p=0.5),
+            A.ShiftScaleRotate(shift_limit= 0.02, scale_limit=0.05, rotate_limit=0, p=0.5),
         ],
             keypoint_params=A.KeypointParams(format='xy') # Ensure x and y coordinates are transformed 
         )

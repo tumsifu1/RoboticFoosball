@@ -4,6 +4,7 @@ from models.binaryClassifier.FoosballDataset import FoosballDataset
 import torch
 import matplotlib.pyplot as plt
 import numpy
+import torch.nn.functional as F
 class FoosballDatasetLocalizer(FoosballDataset):
 
     def __init__(self, images_dir, json_path, transform=None, train=True):
@@ -13,10 +14,10 @@ class FoosballDatasetLocalizer(FoosballDataset):
         positive_regions = torch.stack([item[0] for item in batch], dim=0)  # Stack all positive_region tensors
         x_coords = torch.tensor([item[1] for item in batch], dtype=torch.float32)  # Collect all new_x values
         y_coords = torch.tensor([item[2] for item in batch], dtype=torch.float32)  # Collect all new_y values
-        img_names = [item[4] for item in batch]  # Collect all image names
+        #img_names = [item[4] for item in batch]  # Collect all image names
         #ball_exists = torch.tensor([item[3] for item in batch], dtype=torch.float32)  # Collect all ball_exists values
 
-        return positive_regions, x_coords, y_coords, img_names
+        return positive_regions, x_coords, y_coords
     def preprocessImage(self, image):
         """Preprocess the image by applying transformations and augmentations"""
         image = numpy.array(image)
@@ -31,6 +32,7 @@ class FoosballDatasetLocalizer(FoosballDataset):
         image = self.preprocess(image)  # Always preprocess the image
         return image
     
+    
     def get_new_coordinates(self, x, y,region_width, region_height):
         #print("Get new coordinates")
         col_index = x // region_width
@@ -44,7 +46,23 @@ class FoosballDatasetLocalizer(FoosballDataset):
 
         return new_x, new_y
 
+    def rescale_image(self, positive_region):
+            positive_region_resized = F.interpolate(positive_region.unsqueeze(0), 
+                                        size=(224, 224), 
+                                        mode='bilinear', 
+                                        align_corners=False).squeeze(0)
 
+            return positive_region_resized
+    
+    def rescale_cordinates(self, old_x, old_y, region_width, region_height):
+        x_scale = 224/region_width
+        y_scale = 224/region_height
+
+        new_x = old_x * x_scale
+        new_y = old_y * y_scale
+
+        return new_x, new_y
+    
     def __getitem__(self, idx):
 
         image, ball_exists, x, y, img_name = self.setupGetItem(idx)
@@ -52,11 +70,16 @@ class FoosballDatasetLocalizer(FoosballDataset):
         #plt.scatter(x, y, c='r', s=5)
         #plt.show()
         image = self.preprocessImage(image)
-
+        
         regions,region_width, region_height = self.breakImageIntoRegions(image)
         positive_region, region_index = self.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
+        positive_region_scaled = self.rescale_image(positive_region)
+        
+        
         new_x, new_y = self.get_new_coordinates(x, y, region_width, region_height)
-        return positive_region, new_x, new_y, ball_exists, img_name
+        new_x_scaled, new_y_scaled = self.rescale_cordinates(new_x, new_y,region_width, region_height)
+
+        return positive_region_scaled, new_x_scaled, new_y_scaled
 
     
 
