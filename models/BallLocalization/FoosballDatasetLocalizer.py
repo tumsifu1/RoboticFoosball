@@ -12,35 +12,25 @@ class FoosballDatasetLocalizer(FoosballDataset):
     def collate_fn(batch):
         # Unpack the batch
         positive_regions = torch.stack([item[0] for item in batch], dim=0)  # Stack all positive_region tensors
-        x_coords = torch.tensor([item[1] for item in batch], dtype=torch.float32)  # Collect all new_x values
-        y_coords = torch.tensor([item[2] for item in batch], dtype=torch.float32)  # Collect all new_y values
-        #img_names = [item[4] for item in batch]  # Collect all image names
+        x_coords = torch.stack([torch.tensor(item[1], dtype=torch.float32) for item in batch])
+        y_coords = torch.stack([torch.tensor(item[2], dtype=torch.float32) for item in batch])
+        old_x_coord = torch.stack([torch.tensor(item[3], dtype=torch.float32) for item in batch])
+        old_y_coord = torch.stack([torch.tensor(item[4], dtype=torch.float32) for item in batch])
+
+        
+        img_names = [item[5] for item in batch]  # Collect all image names
         #ball_exists = torch.tensor([item[3] for item in batch], dtype=torch.float32)  # Collect all ball_exists values
 
-        return positive_regions, x_coords, y_coords
-    def preprocessImage(self, image):
-        """Preprocess the image by applying transformations and augmentations"""
-        image = numpy.array(image)
-        # Apply augmentations if training
-        if self.pixelAugmentations and self.spatialAugmentations and self.train:
-            image = self.pixelAugmentations(image=image)['image']  # Apply pixel-level augmentations
-            #image = self.spatialAugmentations(image=image)['image']  # Apply spatial augmentations (removed because they need to be applied)
-        
-        #conmvert to tensor
-        image = self.to_tensor(image).float()
-
-        image = self.preprocess(image)  # Always preprocess the image
-        return image
+        return positive_regions, x_coords, y_coords, old_x_coord, old_y_coord, img_names
     
-    
-    def get_new_coordinates(self, x, y,region_width, region_height):
+    def get_new_coordinates(self, x, y):
         #print("Get new coordinates")
-        col_index = x // region_width
-        row_index = y // region_height
+        col_index = x // self.get_region_width()
+        row_index = y // self.get_region_height()
         #print(f"X: {x}, Y: {y}")
         #print(f"Row Index: {row_index}, Col Index: {col_index}")
-        new_x = (x - (col_index*region_width))
-        new_y = (y - (row_index *region_height))
+        new_x = (x - (col_index*self.get_region_width()))
+        new_y = (y - (row_index*self.get_region_height()))
         if new_x < 0 or new_y < 0:
             raise ValueError(f"Invalid coordinates: ({new_x}, {new_y})")
 
@@ -48,35 +38,41 @@ class FoosballDatasetLocalizer(FoosballDataset):
 
     def rescale_image(self, positive_region):
             positive_region_resized = F.interpolate(positive_region.unsqueeze(0), 
-                                        size=(224, 224), 
+                                        size=(227, 227), 
                                         mode='bilinear', 
                                         align_corners=False).squeeze(0)
 
             return positive_region_resized
     
-    def rescale_cordinates(self, old_x, old_y, region_width, region_height):
-        new_x = 224/region_width
-        new_y = 224/region_height
+    def rescale_coordinates(self, new_x, new_y):
+        
+        scaled_x = (new_x / self.get_region_width()) *227
+        #print(f"scaled_after 227 x: {scaled_x}")
+        scaled_y = (new_y / self.get_region_height()) *227
+        return scaled_x, scaled_y
 
-        return new_x, new_y
-    
     def __getitem__(self, idx):
 
         image, ball_exists, x, y, img_name = self.setupGetItem(idx)
         #plt.imshow(image)
         #plt.scatter(x, y, c='r', s=5)
         #plt.show()
-        image = self.preprocessImage(image)
         
-        regions,region_width, region_height = self.breakImageIntoRegions(image)
-        positive_region, region_index = self.getRegionWithBall(ball_exists, x, y, regions, region_height, region_width)
+        #print(f"Original X, Y: ({x}, {y})")
+        regions = self.breakImageIntoRegions(image)
+
+        positive_region, _ = self.getRegionWithBall(ball_exists, x, y, regions)
+        new_x, new_y = self.get_new_coordinates(x, y)
+        #print(f"New X, Y (Before Scaling): ({new_x}, {new_y})")
+        image, x,y = self.preprocessImage(positive_region, (new_x,new_y))
         positive_region_scaled = self.rescale_image(positive_region)
         
         
-        new_x, new_y = self.get_new_coordinates(x, y, region_width, region_height)
-        new_x_scaled, new_y_scaled = self.rescale_cordinates(new_x, new_y,region_width, region_height)
 
-        return positive_region_scaled, new_x_scaled, new_y_scaled
+        new_x_scaled, new_y_scaled = self.rescale_coordinates(new_x, new_y)
+        #print(f"New X, Y (After Scaling): ({new_x_scaled}, {new_y_scaled})")
+
+        return positive_region_scaled, new_x_scaled, new_y_scaled, new_x, new_y, img_name
 
     
 

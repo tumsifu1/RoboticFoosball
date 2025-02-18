@@ -12,19 +12,25 @@ sys.path.append(project_root)
 class BallLocalization(nn.Module):
     def __init__(self):
         super(BallLocalization, self).__init__()
-        weights = MobileNet_V3_Large_Weights.IMAGENET1K_V1
+        weights = MobileNet_V3_Large_Weights.DEFAULT
         self.model = mobilenet_v3_large(weights=weights)
+        for m in self.model.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.train()
+                for param in m.parameters():
+                    param.requires_grad = True
 
         in_features = self.model.classifier[3].in_features
-
         self.model.classifier[-1] = nn.Linear(in_features, 2)
+        nn.init.kaiming_normal_(self.model.classifier[-1].weight, nonlinearity='linear') #new 
 
     def forward(self, x):
         model_out = self.model(x)
-    
-        out = torch.sigmoid(model_out)
+        #out = torch.clamp(model_out, 0, 1)
+        #out = torch.sigmoid(model_out)
+        #out = (torch.tanh(model_out) + 1) / 2
         
-        return out
+        return model_out
     
 def main():
     model = BallLocalization()
