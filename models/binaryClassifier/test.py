@@ -17,6 +17,7 @@ import numpy as np
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
+
 def train(epochs: Optional[int] = 30, **kwargs) -> None:
     print("Starting training...")
     
