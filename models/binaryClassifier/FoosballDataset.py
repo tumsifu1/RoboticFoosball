@@ -198,8 +198,6 @@ class FoosballDataset(Dataset):
 
         image = self.preprocess(image)  # Always preprocess the image
 
-        #TODO plot the augmented image and points before next run
-        #TODO re run the model starting after the initialy 60 train on normalized values with sigmoid 
         return image,x,y
     
     def returnLabels(self, ball_exists, positive_region, negative_region):
