@@ -16,23 +16,47 @@ from model import BinaryClassifier
 import numpy as np
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from src.tools.unnormalize import unnormalize
 
-def train(epochs: Optional[int] = 30, **kwargs) -> None:
-    print("Starting training...")
-    
+def displayImage(image, groundTruth,predicted ):
+        # Unnormalize the image for visualization.
+        # (Assumes image tensor is (B, C, 224, 224) normalized using ImageNet stats)
+        unnorm_img = unnormalize(image)  # now in [0,1]
+
+        
+        img_np = unnorm_img[0].permute(1, 2, 0).cpu().numpy()
+        # Clip to [0,1] then convert to [0,255] uint8.
+        img_np = np.clip(img_np, 0, 1)
+        img_np = (img_np * 255).astype(np.uint8)
+        
+
+        plt.imshow(img_np)
+        plt.title(f"Ground Truth: {groundTruth} | Predicted: {predicted}", fontsize=12, color='white', backgroundcolor='black')
+        plt.show()
+def saveConfusionMatrix(test_labels, test_preds, output_dir ):
+    print(test_preds)
+    # Compute and display confusion matrix
+    cm = confusion_matrix(test_labels, test_preds)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot(cmap=plt.cm.Blues)
+    plt.title(f'Confusion Matrix Test')
+    cm_path = os.path.join(output_dir, f'confusion_matrix_test.png')
+    plt.savefig(cm_path)
+    plt.close()
+    print(f"Test confusion matrix saved at: {cm_path}")
+
+def test(**kwargs) -> None:
     for kwarg in kwargs:
         print(f"{kwarg}: {kwargs[kwarg]}")
     model = kwargs["model"]
     test_loader = kwargs["test"]
     device = kwargs["device"]
     output_dir = kwargs["output"]
-
-    print("starting testing")
-
-
     #testing
     test_labels = []
     test_preds = []
+    print("starting testing")
+
     with torch.no_grad():
         for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
@@ -41,26 +65,18 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
             #confusion matrix
             pred = torch.round(torch.sigmoid(output)) #convert to binary 
             test_preds.extend(pred.cpu().squeeze().tolist())
+            #print(test_preds)
             test_labels.extend(labels.cpu().tolist())
 
-        test_labels = np.array(test_labels)
-        test_preds = np.array(test_preds)
-        # Compute and display confusion matrix
-        cm = confusion_matrix(test_labels, test_preds)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-        disp.plot(cmap=plt.cm.Blues)
-        plt.title(f'Confusion Matrix Test')
-        cm_path = os.path.join(output_dir, f'confusion_matrix_test.png')
-        plt.savefig(cm_path)
-        plt.close()
-        print(f"Test confusion matrix saved at: {cm_path}")
-
+            #displayImage(images, labels[0], pred[0])
+    test_preds = np.array(test_preds)
+    test_labels = np.array(test_labels)
+    saveConfusionMatrix(test_labels, test_preds , output_dir)
     print(f"Finished testing")
 
 def main():
 
     argParser = argparse.ArgumentParser()
-    argParser.add_argument("-epoch", type=int, default=30, help="number of epochs")
     argParser.add_argument('-images', metavar='images_directory', type=str, help='path to images directory (default: ./data/image_data/images)', default='./data/images')
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
@@ -87,14 +103,14 @@ def main():
 
     #load the model
     model = BinaryClassifier()
+    model.load_state_dict(torch.load(args.model))# Apply weights from training
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min')
-    loss_function = nn.MSELoss(reduction='mean')
+    loss_function = nn.BCEWithLogitsLoss()
 
-    train(  
-        epochs=args.epoch, 
+    test(  
         model=model, 
         optimizer=optimizer, 
         scheduler=scheduler,    

@@ -16,7 +16,7 @@ test_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor()
 ])
-dataset = FoosballDatasetLocalizer(json_path=json_path, images_dir=images_dir, transform=test_transform)
+dataset = FoosballDatasetLocalizer(json_path=json_path, images_dir=images_dir, transform=None)
 dataloader = DataLoader(dataset, batch_size=1, shuffle= True, collate_fn=FoosballDatasetLocalizer.collate_fn)
 #2304 × 1296
 
@@ -101,14 +101,14 @@ def test_get_new_coordinates():#You must comment out to tensor in the preprocess
 
 #loop through the dataloader and display the segments with ball see where the ball is
 def full_test():
-    for image, x,y, img_name in dataloader:
+    for image, normalized_x, normalized_y,  x,y,img_name  in dataloader:
         
         # Unnormalize the image
         unnormalized_img = unnormalize(image.unsqueeze(0))  # Add batch dim
         img = unnormalized_img.squeeze().permute(1, 2, 0).numpy()  # Convert to HWC
         print(f"x: {x}, y: {y}")
         img_bgr = cv2.cvtColor((img * 255).astype("uint8"), cv2.COLOR_RGB2BGR)
-        
+        x,y = normalized_x * 227, normalized_y * 227
         # Display the image
         plt.imshow(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
         #plt.scatter(x, y, c='red', label='Original')
@@ -119,9 +119,9 @@ def full_test():
 
 def __main__():
     """Run full test to see the issue with dataset"""
-    test_getRegionWithBall_realData()
+    #test_getRegionWithBall_realData()
     #test_get_new_coordinates()  
-    #full_test() 
+    full_test() 
 
 if __name__=="__main__":
     __main__()
