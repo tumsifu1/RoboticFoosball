@@ -1,8 +1,8 @@
 import torch
 
 def unnormalize(image):
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
+    mean = [0.1249, 0.1399, 0.1198]
+    std = [0.1205, 0.1251, 0.1123]
     """Undo normalization for visualization."""
     mean = torch.tensor(mean).view(-1, 1, 1)
     std = torch.tensor(std).view(-1, 1, 1)
