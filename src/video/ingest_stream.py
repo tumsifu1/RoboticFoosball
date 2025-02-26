@@ -1,35 +1,33 @@
-import cv2
+import gi
 import numpy as np
 
-# Define the GStreamer pipeline
-gst_pipeline = (
-    "udpsrc port=5000 caps=application/x-rtp, encoding-name=H264, payload=96 ! "
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst
+
+# Initialize GStreamer
+Gst.init(None)
+
+# GStreamer pipeline string
+pipeline_str = (
+    "udpsrc port=5000 caps=application/x-rtp,encoding-name=H264,payload=96 ! "
     "rtpjitterbuffer latency=50 drop-on-latency=true ! "
-    "rtph264depay ! h264parse ! nvv4l2decoder ! nvvidconv ! videoconvert ! "
-    "video/x-raw, format=BGR ! appsink drop=true"
+    "rtph264depay ! h264parse ! nvv4l2decoder ! "
+    "nvvidconv ! videoconvert ! appsink name=sink"
 )
 
-# Open the GStreamer pipeline with OpenCV
-cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+# Create pipeline
+pipeline = Gst.parse_launch(pipeline_str)
+appsink = pipeline.get_by_name("sink")
 
-if not cap.isOpened():
-    print("Error: Couldn't open video stream.")
-    exit()
+# Set pipeline state to playing
+pipeline.set_state(Gst.State.PLAYING)
 
 while True:
-    ret, frame = cap.read()
-    
-    if not ret:
-        print("Error: Couldn't receive frame (stream may have stopped).")
-        break
+    sample = appsink.emit("pull-sample")
+    if sample:
+        buffer = sample.get_buffer()
+        size = buffer.get_size()
+        print(f"Received frame of size: {size} bytes")
 
-    # Display the frame
-    cv2.imshow("Jetson TX2 Video Stream", frame)
-
-    # Press 'q' to exit the video display
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-# Release resources
-cap.release()
-cv2.destroyAllWindows()
+# Cleanup
+pipeline.set_state(Gst.State.NULL)
