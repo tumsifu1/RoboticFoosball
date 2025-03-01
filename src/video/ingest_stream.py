@@ -1,33 +1,67 @@
-import gi
+import cv2
 import numpy as np
+import time
+import sys
 
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst
+class SoftwareDecoderReceiver:
+    def __init__(self, port=5000):
+        self.port = port
+        
+        # Define the GStreamer pipeline with software decoder
+        self.gst_pipeline = (
+            f"udpsrc port={port} caps=\"application/x-rtp, encoding-name=H264, payload=96\" ! "
+            "rtpjitterbuffer latency=50 drop-on-latency=true ! "
+            "rtph264depay ! h264parse ! "
+            "avdec_h264 ! "  # Software decoder instead of nvv4l2decoder
+            "videoconvert ! video/x-raw, format=BGR ! "
+            "appsink max-buffers=2 drop=true sync=false"
+        )
+        
+        print(f"Using pipeline: {self.gst_pipeline}")
+        
+        # Create the capture object
+        self.cap = cv2.VideoCapture(self.gst_pipeline, cv2.CAP_GSTREAMER)
+        
+        if not self.cap.isOpened():
+            print("Failed to open video capture")
+            sys.exit(1)
+        
+        print("Video capture opened successfully")
+    
+    def run(self):
+        try:
+            while True:
+                # Read a frame
+                ret, frame = self.cap.read()
+                
+                if not ret:
+                    print("Failed to get frame, retrying...")
+                    time.sleep(0.1)
+                    continue
+                
+                # Display the frame
+                cv2.imshow('Video Stream', frame)
+                
+                # Here you would pass the frame to your ML pipeline
+                # self.process_with_ml(frame)
+                
+                # Check for ESC key
+                key = cv2.waitKey(1)
+                if key == 27:  # ESC key
+                    break
+        
+        except KeyboardInterrupt:
+            print("Interrupted by user")
+        finally:
+            self.cap.release()
+            cv2.destroyAllWindows()
+            print("Capture released")
+    
+    def process_with_ml(self, frame):
+        # Placeholder for your ML processing
+        # This is where you would integrate your machine learning pipeline
+        pass
 
-# Initialize GStreamer
-Gst.init(None)
-
-# GStreamer pipeline string
-pipeline_str = (
-    "udpsrc port=5000 caps=application/x-rtp,encoding-name=H264,payload=96 ! "
-    "rtpjitterbuffer latency=50 drop-on-latency=true ! "
-    "rtph264depay ! h264parse ! nvv4l2decoder ! "
-    "nvvidconv ! videoconvert ! appsink name=sink"
-)
-
-# Create pipeline
-pipeline = Gst.parse_launch(pipeline_str)
-appsink = pipeline.get_by_name("sink")
-
-# Set pipeline state to playing
-pipeline.set_state(Gst.State.PLAYING)
-
-while True:
-    sample = appsink.emit("pull-sample")
-    if sample:
-        buffer = sample.get_buffer()
-        size = buffer.get_size()
-        print(f"Received frame of size: {size} bytes")
-
-# Cleanup
-pipeline.set_state(Gst.State.NULL)
+if __name__ == "__main__":
+    receiver = SoftwareDecoderReceiver(port=5000)
+    receiver.run()

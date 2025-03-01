@@ -1,0 +1,1 @@
+gst-launch-1.0 libcamerasrc ! videoconvert ! video/x-raw,width=1280,height=720,framerate=60/1 ! videoconvert ! queue max-size-buffers=1 leaky=downstream ! x264enc tune=zerolatency bitrate=8000 speed-preset=ultrafast key-int-max=15 ! rtph264pay ! udpsink host=192.168.1.2 port=5000 sync=false
