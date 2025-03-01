@@ -12,6 +12,7 @@ import torch.nn.functional as F
 # Import your dataset and model
 from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
 from models.ballLocalization.model_snoutNetBase import BallLocalization
+#from models.ballLocalization.model_mobileNetV3Base import BallLocalization
 
 min_distance,  max_distance, sum_distance, sum_squared_distance = float('inf'), float('-inf'), 0, 0,
 # Define a custom unnormalize function
@@ -98,7 +99,7 @@ def test(epochs: int = 30, **kwargs) -> None:
     model.eval()
     num_images = len(test_loader) #TODO is testloader the len?
     with torch.no_grad():
-        for image, scaled_x, scaled_y, gtruth_not_scaledd_x, gtruth_not_scaled, _ in test_loader:
+        for image, scaled_x, scaled_y, gtruth_not_scaledd_x, gtruth_not_scaled_y, _ in test_loader:
 
             # Forward pass through the model using the normalized image
             output = model(image)
@@ -106,8 +107,11 @@ def test(epochs: int = 30, **kwargs) -> None:
             
             # Extract the first instance from the batch.
             # NOTE: Ensure that the coordinates (x, y) are in the 224-space if that’s how they were trained.
-            actual_x, actual_y = gtruth_not_scaledd_x, gtruth_not_scaled
+            actual_x, actual_y = scaled_x, scaled_y
+
             pred_x,pred_y = output[0, 0].item(), output[0, 1].item()
+            #pred_x, pred_y = rescale_coordinates(pred_x, pred_y, FoosballDatasetLocalizer.get_region_width(), FoosballDatasetLocalizer.get_region_height())
+            #actual_x, actual_y = rescale_coordinates(scaled_x, scaled_y, FoosballDatasetLocalizer.get_region_width(), FoosballDatasetLocalizer.get_region_height())
             print(f"inputs:{scaled_x, scaled_y}")
             # Move tensors to the device
             image, x, y = image.to(device), scaled_x.to(device), scaled_y.to(device)
@@ -115,7 +119,7 @@ def test(epochs: int = 30, **kwargs) -> None:
             
 
 
-            #displayImage(image, scaled_x, scaled_y, actual_x,actual_y,pred_x,pred_y)
+            displayImage(image, actual_x, actual_y, actual_x,actual_y,pred_x,pred_y)
             calculate_mse(x,y,pred_x,pred_y)
 
     mean_distance = torch.tensor(sum_distance / num_images)
@@ -132,7 +136,7 @@ def main():
     argParser.add_argument('-labels', metavar='labels', type=str, default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, default=1)
     argParser.add_argument('-output', metavar='output', type=str, default='./output/ball_Localization')
-    argParser.add_argument('-model', metavar='model', type=str, default='output/ball_Localization/huber1loss_varLoss_kamiInit_02/best_model.pth')
+    argParser.add_argument('-model', metavar='model', type=str, default='output/ball_Localization/best_model_mse11_sd10.pth')
     args = argParser.parse_args()
 
     test_images = "./data/test/images"
@@ -150,6 +154,7 @@ def main():
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch, shuffle=True, collate_fn=FoosballDatasetLocalizer.collate_fn)
 
     model = BallLocalization()
+    print(args.model)
     model.load_state_dict(torch.load(args.model))# Apply weights from training
     model.to(device)
 
