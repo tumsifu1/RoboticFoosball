@@ -19,7 +19,7 @@ import numpy as np
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-def train(epochs: Optional[int] = 30, **kwargs) -> None:
+def train(epochs: Optional[int] = 1, **kwargs) -> None:
     print("Starting training...")
     
     for kwarg in kwargs:
@@ -44,7 +44,9 @@ def train(epochs: Optional[int] = 30, **kwargs) -> None:
         model.train()
         train_loss = 0
 
-        for images,labels in train_loader:
+        for i, batch in enumerate(train_loader):
+            images, labels = batch
+            print(f"batch: {i}")
             # print(batch)
             #print(f"images: {images}")
             #print(f"Labels: {labels}")
@@ -143,7 +145,7 @@ def main():
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=32)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
-    argParser.add_argument('-num_workers', metavar='num_workers', type=int, help='number of workers for dataloader', default=2)
+    argParser.add_argument('-num_workers', metavar='num_workers', type=int, help='number of workers for dataloader', default=0)
     args = argParser.parse_args()
 
     #random seed for reproducibility

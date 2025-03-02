@@ -1,2 +1,2 @@
 
-python models/ballLocalization/train.py -images data/train/images -labels data/train/labels/labels.json -batch 256 -num_workers 8
+python models/ballLocalization/train.py -images data/train/images -labels data/train/labels/labels.json -batch 32 -num_workers 0 -epoch 100
