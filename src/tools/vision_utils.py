@@ -1,5 +1,4 @@
 import numpy as np
-from models.binaryClassifier.FoosballDataset import FoosballDataset
 
 def rebuild_absolute_coordinates(region_row, region_col, local_x, local_y, region_width, region_height):
     absolute_x = region_col * region_width + local_x
@@ -7,9 +6,10 @@ def rebuild_absolute_coordinates(region_row, region_col, local_x, local_y, regio
     return absolute_x, absolute_y
 
 def segment_image(image: np.ndarray):
-    grid_size = FoosballDataset.GRID_SIZE
-    region_width = FoosballDataset.REGION_WIDTH
-    region_height = FoosballDataset.REGION_HEIGHT
+    
+    grid_size = 4
+    region_width = 1280//grid_size
+    region_height = 720//grid_size
 
     regions = []
     for row in range(grid_size):
