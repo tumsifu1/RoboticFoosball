@@ -1,26 +1,34 @@
 import cv2
 import numpy as np
 import torch
-import concurrent.futures
 from models.binaryClassifier.model import BinaryClassifier
 from models.BallLocalization.model_snoutNetBase import BallLocalization
 from src.tools import vision_utils
 import torch.nn.functional as F
 import time
-
+from torchvision import transforms
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 classifier = BinaryClassifier().to(device)
 localizer = BallLocalization().to(device)
+COMPUTED_MEAN = [0.1249, 0.1399, 0.1198]
+COMPUTED_STD = [0.1205, 0.1251, 0.1123]
+
+preprocess = transforms.Compose([
+    transforms.ToTensor(),           # Convert to PyTorch tensor (C, H, W) comment out when testing
+    transforms.Normalize(mean=COMPUTED_MEAN, std=COMPUTED_STD)  # Normalize
+])
 
 def ingest_stream():
     """Reads frames from the video stream and processes them."""
     gst_str = (
         "udpsrc port=5000 caps=\"application/x-rtp, encoding-name=H264, payload=96\" ! "
-        "rtpjitterbuffer latency=50 drop-on-latency=true ! rtph264depay ! h264parse ! "
-        "nvv4l2decoder ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink"
+        "rtpjitterbuffer latency=50 drop-on-latency=true mode=0 ! "
+        "rtph264depay ! h264parse ! nvv4l2decoder enable-max-performance=1 ! "
+        "nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink"
     )
+
 
     cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 
@@ -35,7 +43,9 @@ def ingest_stream():
             print("Failed to read frame")
             break
 
-        process_frame(frame)
+        cv2.imshow("Ball Tracking", frame)
+        cv2.waitKey(1)  
+        # process_frame(frame)
 
         next_frame = time.time()
         print(f"Completed frame processing in: {(next_frame - read_frame) * 10 ** 3} ms")
@@ -48,30 +58,48 @@ def process_frame(frame: np.ndarray):
 
     begin_proc = time.time()
     tiles = vision_utils.segment_image(frame)
-
+    print(tiles)
     # Normalize and convert tiles to tensors in parallel
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        tiles = list(executor.map(lambda tile: torch.tensor(tile.astype(np.float32) / 255.0).permute(2, 0, 1), tiles))
-
-    # Minibatch the tiles
-    tile_batch = torch.stack(tiles).to(device) 
+    tiles = np.array(tiles, dtype=np.float32)  
+    #tiles = torch.tensor(tiles).permute(0, 3, 1, 2).to(device) 
+    
+    normalized_tiles = preprocess(tiles)
 
     end_proc = time.time()
     print(f"Pre-processed frame in {(end_proc - begin_proc) * 10 ** 3} ms")
-    
+    best_tile_idx = -1
+
     with torch.no_grad():
         class_start = time.time()
-        predictions = classifier(tile_batch).squeeze()  # Shape: (16,)
+        for tile,i in enumerate(normalized_tiles):
+            prediction = classifier(tile).squeeze()  # Shape: (16,)
+            
+            if prediction == 1:
+                best_tile_idx = i
+                break
         class_end = time.time()
     
     print(f"Classified in {(class_end - class_start) * 10 ** 3} ms")
-    # Find the tile with the **highest confidence score**
+
+    print(predictions)
+    start_c2l = time.time()
+    # Find the tile with the ball
     best_tile_idx = torch.argmax(predictions).item()
+    proc1 = time.time()
+
 
     # Extract the best tile and run localizer
-    best_tile = tile_batch[best_tile_idx].unsqueeze(0)  # Shape: (1, C, H, W)
+    best_tile = tiles[best_tile_idx].unsqueeze(0) 
+    proc2 = time.time()
 
     best_tile = F.interpolate(best_tile, size=(227, 227), mode='bilinear', align_corners=False)
+
+    end_c2l = time.time()
+
+    print(f"Proc 1 {(proc1 - start_c2l) * 10 ** 3} ms, Proc 2 {(proc2 - proc1) * 10 ** 3}, Proc 3 {(end_c2l - proc2) * 10 ** 3}")
+
+    print(f"Model to Model in {(end_c2l - start_c2l) * 10 ** 3} ms")
+
 
     with torch.no_grad():
         local_start = time.time()
