@@ -1,12 +1,22 @@
+version: "3.8"
+
 services:
-  motor_container:  # This one needs to start first if we using pair
+  publisher:
+    build: ./src/ml_container
+    container_name: publisher
+    ports:
+      - "5555:5555"
+    networks:
+      - app_network
+
+  motor_container:
     build: ./src/motor_container
     container_name: motor_container
-    network_mode: "host"
-
-  ml_container:
-    build: ./src/ml_container
-    container_name: ml_container
     depends_on:
-      - motor_container  # Ensure motor_container starts first
-    network_mode: "host"
+      - publisher
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge

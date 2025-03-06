@@ -7,4 +7,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-CMD ["python3.6", "motor_control.py"]
+CMD ["python", "-u", "motor_control.py"]
+

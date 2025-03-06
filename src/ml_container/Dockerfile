@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Run ML model script on container start
-CMD ["python", "ml_models.py"]
+CMD ["python", "-u", "ml_models.py"]
