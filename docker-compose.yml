@@ -1,0 +1,12 @@
+services:
+  motor_container:  # This one needs to start first if we using pair
+    build: ./src/motor_container
+    container_name: motor_container
+    network_mode: "host"
+
+  ml_container:
+    build: ./src/ml_container
+    container_name: ml_container
+    depends_on:
+      - motor_container  # Ensure motor_container starts first
+    network_mode: "host"
