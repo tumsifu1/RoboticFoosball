@@ -7,6 +7,8 @@ from config import *
 
 from main import player_ys
 
+from adafruit_servokit import ServoKit
+
 #Add case when player centre cannot move to a position (player will run into wall), move as far as possible
 def trigger_motor(rod_move, y_rod_new):
     if rod_move == -1:
@@ -43,3 +45,12 @@ def motor_drive(rod_move, movement_amount):
         #another place where the state array will change is within the trajectory mapping function
         #as it will have the new ball locations, only question is how often will it be run?
         #every 2 frames, every few?
+    myKit=ServoKit(channels=16)
+    import time
+    while True:
+        for i in range(0,90,1):
+            myKit.servo[rod_move].angle=i
+            time.sleep(0.01)
+        for i in range(90,0,-1):
+            myKit.servo[rod_move].angle=i
+            time.sleep(0.01)
