@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
-from models.ballLocalization.model_snoutNetBase import BallLocalization
-#from models.ballLocalization.model_mobileNetV3Base import BallLocalization
+#from models.ballLocalization.model_snoutNetBase import BallLocalization
+from models.ballLocalization.model_mobileNetV3Base import BallLocalization
 import numpy as np
 import random
 
@@ -141,7 +141,7 @@ def validate_one_epoch( model, optimizer, scheduler,loss_function, train_loader,
     scheduler.step(val_loss)
     return val_loss, mse_total,total
 
-def train(epochs: Optional[int] = 30, **kwargs) -> None:
+def train(epochs: Optional[int] = 1, **kwargs) -> None:
     print("Starting training...")
 
 
@@ -280,8 +280,8 @@ def main():
 
     #load the model
     model = BallLocalization()
-    model.load_state_dict(torch.load("output/ball_Localization/best_model.pth"))
-    #model.apply(init_weights)
+    #model.load_state_dict(torch.load("output/ball_Localization/best_model.pth"))
+    model.apply(init_weights)
     model.to(device)
     #optimizer = optim.Adam([
     #    {'params': model.model.features.parameters(), 'lr': 1e-4},
