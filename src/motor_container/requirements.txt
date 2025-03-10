@@ -1,0 +1,2 @@
+pyzmq #todo add the rest of your requirements here for motor @Vid
+msgpack
