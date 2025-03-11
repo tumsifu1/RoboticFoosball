@@ -5,9 +5,9 @@ motor.py: runs motor driving code when required rod movements are given
 
 from config import *
 
-from main import player_ys
+import time
 
-from adafruit_servokit import ServoKit
+
 
 #Add case when player centre cannot move to a position (player will run into wall), move as far as possible
 def trigger_motor(rod_move, y_rod_new):
@@ -45,12 +45,35 @@ def motor_drive(rod_move, movement_amount):
         #another place where the state array will change is within the trajectory mapping function
         #as it will have the new ball locations, only question is how often will it be run?
         #every 2 frames, every few?
-    myKit=ServoKit(channels=16)
-    import time
+    print("servo kit created")
+
+    
+    counter = 0
     while True:
-        for i in range(0,90,1):
-            myKit.servo[rod_move].angle=i
-            time.sleep(0.01)
+        myKit.servo[0].angle = None
+
+        print("moving motor")
         for i in range(90,0,-1):
             myKit.servo[rod_move].angle=i
             time.sleep(0.01)
+        print("stopping motor")
+
+        print("moving motor")
+        for i in range(0,90,1):
+            myKit.servo[rod_move].angle=i
+            time.sleep(0.01)
+        myKit.servo[0].angle = None
+        print("stopping motor")
+
+        print("shot")
+        for i in range(0,45,1):
+            myKit.servo[1].angle=i
+            time.sleep(0.05)
+        print("shot done")
+
+        myKit.servo[0].angle = None
+
+
+        break
+
+    return

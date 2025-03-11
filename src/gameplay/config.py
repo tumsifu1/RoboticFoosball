@@ -2,6 +2,10 @@
 config.py: contains constants shared across files
 """
 
+from adafruit_servokit import ServoKit
+
+from adafruit_pca9685 import PCA9685
+
 #Dimensions of elements of the tables, pixel-wise
 FRAME_WIDTH = 2304
 FRAME_HEIGHT = 1296
@@ -31,3 +35,7 @@ RIGHT_ROD_X = 1496
 
 #Minimum movement to prevent trigger motor to be called if it is too small (prevent unnecessary start/stops)
 MIN_MOVEMENT = 10
+
+player_ys = [[0,0,0],[0,0,0],[0,0,0]]
+
+myKit=ServoKit(channels=16)
