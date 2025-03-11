@@ -14,7 +14,7 @@ from gi.repository import Gst, GLib
 
 
 # Setup Device
-device = torch.device("cpu")
+device = torch.device("cuda")
 
 # Load models
 classifier = BinaryClassifier().to(device).eval()
@@ -71,7 +71,7 @@ def ingest_stream():
                 
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
-                    print(f"Type: {type(frame)}, dtype: {frame.dtype}, shape: {frame.shape}, min: {frame.min()}, max: {frame.max()}")
+                    # print(f"Type: {type(frame)}, dtype: {frame.dtype}, shape: {frame.shape}, min: {frame.min()}, max: {frame.max()}")
                     # print("Frame successfully reshaped.")
 
                     try:
@@ -84,10 +84,10 @@ def ingest_stream():
         return Gst.FlowReturn.OK
 
     pipeline = Gst.parse_launch(
-        "udpsrc port=5000 caps=\"application/x-rtp, encoding-name=H264, payload=96\" ! "
-        "rtpjitterbuffer latency=10 drop-on-latency=true ! rtph264depay ! "
-        "h264parse ! nvv4l2decoder ! nvvidconv ! videoconvert ! "
-        "video/x-raw, format=RGB ! appsink name=sink emit-signals=True max-buffers=1 drop=True"
+        "udpsrc port=5000 buffer-size=200000 caps=\"application/x-rtp, encoding-name=H264, payload=96\" ! "
+        "rtpjitterbuffer latency=50 drop-on-latency=true do-lost=true ! rtph264depay ! "
+        "h264parse ! queue max-size-buffers=3 leaky=downstream ! nvv4l2decoder enable-max-performance=1 disable-dpb=true "
+        " ! nvvidconv ! videoconvert ! video/x-raw, format=RGB ! appsink name=sink emit-signals=True max-buffers=1 drop=True"
     )
 
 
@@ -99,6 +99,8 @@ def ingest_stream():
     loop = GLib.MainLoop()
     try:
         loop.run()
+        if frame_queue:
+            loop.quit()
     except KeyboardInterrupt:
         print("Stopping...")
         pipeline.set_state(Gst.State.NULL)
@@ -163,69 +165,30 @@ def process_frame():
             print("Segmenting image...")
             tiles = segment_image_fast(frame, grid_size)
 
-            print(f"Segmented into {len(tiles)} tiles")
 
-            print(f"Passing Tiles to GPU")
-
-            valid_tensors = []
-            for i, tile in enumerate(tiles):
-                try:
-                    tile = np.ascontiguousarray(tile)
-                    tile = tile.astype(np.uint8)
-                    tensor_tile = torch.from_numpy(tile).permute(2, 0, 1).float() / 255.0
-                    if tensor_tile.shape != (3, tile.shape[0], tile.shape[1]):  # Expecting (C, H, W)
-                        print(f"Skipping tile {i} due to incorrect shape: {tensor_tile.shape}")
-                        continue
-                    print("tile before preprocess")
-                    valid_tensors.append(preprocess(tensor_tile))
-                    print("Added to valid list")
-                except Exception as e:
-                    print(f"Error processing tile {i}: {e}")
-
-            if valid_tensors:
-                tiles_tensors = torch.stack(valid_tensors)
-                print(f"Stacked tensor shape: {tiles_tensors.shape}")
-                tiles_tensors = tiles_tensors.to(device)
-                print("Moved to GPU")
-            else:
-                print("No valid tiles available!")
-
-
-            # for i, tile in enumerate(tiles):
-            #     if tile is None:
-            #         print(f"Tile {i} is None!")
-            #         continue
-                
-            #     print(f"Tile {i} shape: {tile.shape}")
-
-            #     try:
-            #         tensor_tile = torch.from_numpy(tile).permute(2, 0, 1).float() / 255.0
-            #         print(f"Tile {i} tensor shape: {tensor_tile.shape}")
-            #     except Exception as e:
-            #         print(f"Error converting tile {i} to tensor: {e}")
-
-
-            # tiles_tensors = torch.stack([
-            #     preprocess(torch.from_numpy(tile).permute(2, 0, 1).float() / 255.0)
-            #     for tile in tiles
-            # ]).to(device)
+            tiles_np = np.stack(tiles)  # Stack all tiles into a single array
+            print(f"Stacked shape: {tiles_np.shape}, dtype: {tiles_np.dtype}")
+            tiles_tensor = torch.from_numpy(tiles_np).permute(0, 3, 1, 2).float() / 255.0  # Convert all at once
+            print("Preprocessing Tiles")
+            tiles_tensor = preprocess(tiles_tensor)
+            print("Sending tiles to GPU") 
+            tiles_tensor = tiles_tensor.to(device)
 
             print("Running classifier...")
             with torch.no_grad():
-                logits = classifier(tiles_tensors)
+                logits = classifier(tiles_tensor)
                 torch.cuda.synchronize()
                 print("Classifier complete")
-
+                print("Logits: ", logits)
                 probs = torch.sigmoid(logits).squeeze()
                 print(f"Probabilities computed: {probs}")
 
                 print("Resizing tiles for localizer...")
-                tiles_tensors = F.interpolate(tiles_tensors, size=(227, 227), mode='bilinear', align_corners=False)
+                tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
                 
                 print("Running localizer...")
-                coordinates = localizer(tiles_tensors)
+                coordinates = localizer(tiles_tensor)
                 print(f"Localizer output: {coordinates}")
-            print(f"Coordinates: {coordinates}")
             #Find tiles where the ball is detected
             threshold = 0.5
             ball_tiles = (probs > threshold).nonzero(as_tuple=True)[0].tolist()
@@ -235,7 +198,7 @@ def process_frame():
             print(f"Detected position: {detected_positions}")
 
             #Rebuild original image
-            reconstructed_image = reconstruct_image(tiles, grid_size, frame_np.shape)
+            reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
 
             # Extract detected tile
             if detected_positions:
@@ -246,7 +209,7 @@ def process_frame():
                 detected_tile = np.zeros_like(tiles[0])  # Blank if no detection
 
             #  Plot Results
-            plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame_np.shape)
+            plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
 
 if __name__ == "__main__":
     #todo: uncomment out when ready to ingest

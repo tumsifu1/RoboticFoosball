@@ -32,7 +32,7 @@ class SnoutNet(nn.Module):
         X = self.mp(X)
         # print("Shape After Layer 3:", X.shape)
 
-        X = X.view(X.shape[0], -1)
+        X = X.reshape(X.shape[0], -1)
         # print("Shape After Restructuring:", X.shape)
         
         X = self.fc1(X)
