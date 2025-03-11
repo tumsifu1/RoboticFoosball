@@ -1,4 +1,4 @@
-FROM python:3.6-slim-buster
+FROM python:3.8-slim-buster
 
 WORKDIR /app
 
@@ -6,5 +6,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-CMD ["python", "-u", "motor_control.py"]
+CMD ["python", "motor_control.py"]
 
