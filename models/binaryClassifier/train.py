@@ -37,7 +37,10 @@ def train(epochs: Optional[int] = 1, **kwargs) -> None:
     #lists for training and val loss
     losses_train = []
     losses_val = []
-
+    patience = 10
+    counter = 0
+    best_val_loss = float("inf")
+    
     for epoch in range(epochs):
         all_labels = []
         all_preds = []
@@ -109,7 +112,7 @@ def train(epochs: Optional[int] = 1, **kwargs) -> None:
          #save mode weights
         torch.save(model.state_dict(), f"{output_dir}/model_epoch_{epoch+1}.pth")
 
-        if val_loss == min(losses_val):
+        if val_loss <= min(losses_val):
             torch.save(model.state_dict(), os.path.join(output_dir, "best_model.pth"))
 
         # Plot and save loss plot
@@ -134,6 +137,15 @@ def train(epochs: Optional[int] = 1, **kwargs) -> None:
         plt.savefig(cm_path)
         plt.close()
         print(f"Confusion matrix saved at: {cm_path}")
+
+        if val_loss<=best_val_loss:
+            best_val_loss = val_loss 
+            counter = 0
+        else:
+            counter+=1
+            if counter >= patience:
+                print("Stopped training val loss is not improving")
+                break
     
     print("Training complete.")
 
