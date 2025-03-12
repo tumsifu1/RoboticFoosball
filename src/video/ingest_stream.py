@@ -11,7 +11,10 @@ import matplotlib.pyplot as plt
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
+import time
 
+# Global dictionary to store timing statistics
+DEBUG = False
 
 # Setup Device
 device = torch.device("cuda")
@@ -32,7 +35,7 @@ preprocess = transforms.Compose([
 ])
 
 # Frame queue (ensure only latest frame is processed)
-frame_queue = Queue(maxsize=1)
+# frame_queue = Queue(maxsize=10)
 
 def segment_image_fast(image, grid_size=8):
     """Fast segmentation of a PIL image into grid_size x grid_size tiles."""
@@ -71,13 +74,10 @@ def ingest_stream():
                 
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
+                    process_frame(frame)
                     # print(f"Type: {type(frame)}, dtype: {frame.dtype}, shape: {frame.shape}, min: {frame.min()}, max: {frame.max()}")
                     # print("Frame successfully reshaped.")
 
-                    try:
-                        frame_queue.put_nowait(frame)  # Send frame to display thread
-                    except:
-                        pass
 
                 buffer.unmap(map_info)
         
@@ -128,7 +128,7 @@ def plot_detections(original_image, detected_tile, detected_positions, grid_size
     axes[1].set_title("Detected Tile with Relative Coordinates")
 
     # Overlay relative coordinates (center of tile)
-    axes[1].scatter(region_w // 2, region_h // 2, c='blue', marker='o', s=100, label="Ball Position")
+    axes[1].scatter(region_w // 2, region_h // 2, c='red', marker='o', s=100, label="Ball Position")
 
     plt.show(block=False)
     plt.pause(0.001)
@@ -149,77 +149,102 @@ def reconstruct_image(tiles, grid_size, image_shape):
 
     return full_image
 
-def process_frame():
+
+
+def process_frame(frame):
     """Processes frames in real-time with low latency on TX2."""
-    while True:
-        print("Checking Queue...")
-        if frame_queue.empty():
-            time.sleep(0.0001)
-        else:
-            print("Processing Frame")
-            # Assume frame is obtained from frame_queue
-            frame = frame_queue.get()  # Original image (PIL or NumPy)
-
-            #Segment Image into Tiles
-            grid_size = 8
-            print("Segmenting image...")
-            tiles = segment_image_fast(frame, grid_size)
-
-
-            tiles_np = np.stack(tiles)  # Stack all tiles into a single array
-            print(f"Stacked shape: {tiles_np.shape}, dtype: {tiles_np.dtype}")
-            tiles_tensor = torch.from_numpy(tiles_np).permute(0, 3, 1, 2).float() / 255.0  # Convert all at once
-            print("Preprocessing Tiles")
-            tiles_tensor = preprocess(tiles_tensor)
-            print("Sending tiles to GPU") 
-            tiles_tensor = tiles_tensor.to(device)
-
-            print("Running classifier...")
-            with torch.no_grad():
-                logits = classifier(tiles_tensor)
-                torch.cuda.synchronize()
-                print("Classifier complete")
-                print("Logits: ", logits)
-                probs = torch.sigmoid(logits).squeeze()
-                print(f"Probabilities computed: {probs}")
-
-                print("Resizing tiles for localizer...")
-                tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
-                
-                print("Running localizer...")
-                coordinates = localizer(tiles_tensor)
-                print(f"Localizer output: {coordinates}")
-            #Find tiles where the ball is detected
-            threshold = 0.5
-            ball_tiles = (probs > threshold).nonzero(as_tuple=True)[0].tolist()
-
-            #Convert tile indices to grid positions
-            detected_positions = [(idx // grid_size, idx % grid_size, probs[idx].item()) for idx in ball_tiles]
-            print(f"Detected position: {detected_positions}")
-
-            #Rebuild original image
-            reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
-
-            # Extract detected tile
-            if detected_positions:
-                row, col, _ = detected_positions[0]  # Assuming one detection for now
-                tile_idx = row * grid_size + col
-                detected_tile = tiles[tile_idx]
-            else:
-                detected_tile = np.zeros_like(tiles[0])  # Blank if no detection
-
-            #  Plot Results
-            plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
+    total_start = time.time()
+    print("Processing Frame")
+    
+    # Segment Image into Tiles
+    segment_start = time.time()
+    grid_size = 8
+    tiles = segment_image_fast(frame, grid_size)
+    segment_end = time.time()
+    print(f"Segmentation time: {(segment_end - segment_start) * 1000:.2f} ms")
+    
+    # Stack tiles and convert to float32
+    preproc_start = time.time()
+    tiles = np.stack(tiles)  # Stack all tiles into a single array
+    tiles = tiles.astype(np.float32)
+    if DEBUG:
+        print(f"Stacked shape: {tiles.shape}, dtype: {tiles.dtype}")
+        print(f"Tiles array memory info: {tiles.nbytes / (1024 * 1024):.2f} MB")
+        print(f"CUDA memory before conversion: {torch.cuda.memory_allocated() / (1024 * 1024):.2f} MB")
+        
+    # Convert to PyTorch tensor
+    tiles_tensor = torch.from_numpy(tiles).permute(0, 3, 1, 2).float()
+    tensor_end = time.time()
+    
+    # Normalize
+    tiles_tensor = tiles_tensor / 255.0
+    
+    # Preprocess
+    tiles_tensor = preprocess(tiles_tensor)
+    tiles_tensor = tiles_tensor.to(device)
+    preproc_end = time.time()
+    print(f"Tensor Preprocess time: {(preproc_end - preproc_start) * 1000:.2f} ms")
+    
+    # Run ML models
+    with torch.no_grad():
+        # Classifier
+        classifier_start = time.time()
+        logits = classifier(tiles_tensor)
+        torch.cuda.synchronize()  # Wait for GPU operations to complete
+        probs = torch.sigmoid(logits).squeeze()
+        classifier_end = time.time()
+        print(f"Classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
+        
+        # Resize for localizer
+        localizer_start = time.time()
+        tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
+        
+        # Run localizer
+        coordinates = localizer(tiles_tensor)
+        torch.cuda.synchronize()  # Wait for GPU operations to complete
+        localizer_end = time.time()
+        print(f"Localizer time: {(localizer_end - localizer_start) * 1000:.2f} ms")
+    
+    # Detection logic
+    detect_start = time.time()
+    threshold = 0.99
+    ball_tiles = (probs > threshold).nonzero(as_tuple=True)[0].tolist()
+    detected_positions = [(idx // grid_size, idx % grid_size, probs[idx].item()) for idx in ball_tiles]
+    detect_end = time.time()
+    print(f"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
+    
+    # Reconstruction
+    recon_start = time.time()
+    reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
+    
+    # Extract detected tile
+    if detected_positions:
+        row, col, _ = detected_positions[0]
+        tile_idx = row * grid_size + col
+        detected_tile = tiles[tile_idx]
+    else:
+        detected_tile = np.zeros_like(tiles[0])
+    recon_end = time.time()
+    print(f"Reconstruction time: {(recon_end - recon_start) * 1000:.2f} ms")
+    
+    # Calculate total time
+    total_end = time.time()
+    total_time = total_end - total_start
+    print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
+    
+    # Plot if debugging is enabled
+    if DEBUG:
+        plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
 
 if __name__ == "__main__":
     #todo: uncomment out when ready to ingest
-    ingest_process = Process(target=ingest_stream)
-    process_process = Process(target=process_frame)
+    # ingest_process = Process(target=ingest_stream)
+    # process_process = Process(target=process_frame)
 
-    ingest_process.start()
-    process_process.start()
+    # ingest_process.start()
+    # process_process.start()
 
-    ingest_process.join()
-    process_process.join()
+    # ingest_process.join()
+    # process_process.join()
 
-
+    ingest_stream()
