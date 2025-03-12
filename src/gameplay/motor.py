@@ -5,6 +5,8 @@ motor.py: runs motor driving code when required rod movements are given
 
 from config import *
 
+from numpy import arange
+
 import time
 
 
@@ -53,25 +55,25 @@ def motor_drive(rod_move, movement_amount):
         myKit.servo[0].angle = None
 
         print("moving motor")
-        for i in range(90,0,-1):
+        for i in arange(2,0,-0.1):
             myKit.servo[rod_move].angle=i
-            time.sleep(0.01)
+            time.sleep(0.1)
         print("stopping motor")
 
         print("moving motor")
-        for i in range(0,90,1):
+        for i in arange(0,2,0.1):
             myKit.servo[rod_move].angle=i
-            time.sleep(0.01)
+            time.sleep(0.1)
         myKit.servo[0].angle = None
         print("stopping motor")
 
-        print("shot")
-        for i in range(0,45,1):
-            myKit.servo[1].angle=i
-            time.sleep(0.05)
-        print("shot done")
+        # print("shot")
+        # for i in range(0,45,1):
+        #     myKit.servo[1].angle=i
+        #     time.sleep(0.01)
+        # print("shot done")
 
-        myKit.servo[0].angle = None
+        # myKit.servo[1].angle = None
 
 
         break
