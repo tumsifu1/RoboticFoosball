@@ -247,12 +247,12 @@ def main():
     train_images = "./data/train/images"
     train_labels = "./data/train/labels/labels.json"
     number_workers = args.num_workers
-    #random seed for reproducibility
-    # torch.manual_seed(42)
-    # np.random.seed(42)
-    # random.seed(42)
-    # if torch.cuda.is_available():
-    #     torch.cuda.manual_seed(42)
+    # random seed for reproducibility
+    torch.manual_seed(42)
+    np.random.seed(42)
+    random.seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(42)
         
     #make sure output folder exists 
     if not os.path.exists(args.output):

@@ -12,10 +12,10 @@ import os
 import matplotlib.pyplot as plt
 class FoosballDataset(Dataset): 
     GRID_SIZE = 8 # 4x4 grid
-    REGION_WIDTH = 2304//GRID_SIZE
-    REGION_HEIGHT = 1296//GRID_SIZE
     WIDTH = 2304
     HEIGHT =1296
+    REGION_WIDTH = WIDTH//GRID_SIZE
+    REGION_HEIGHT = HEIGHT//GRID_SIZE
     @classmethod
     def get_region_height(cls):
         return cls.REGION_HEIGHT
@@ -117,6 +117,7 @@ class FoosballDataset(Dataset):
 
             # Calculate region_index
             region_index = int(row_index * self.GRID_SIZE + col_index)
+            
             #print(f"self.GRID_SIZE: {self.GRID_SIZE}, Region Index: {region_index}")
 
             if region_index < 0 or region_index >= len(regions):
