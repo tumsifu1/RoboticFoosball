@@ -13,9 +13,10 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
-from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
+from FoosballDatasetLocalizer import FoosballDatasetLocalizer
 #from models.ballLocalization.model_snoutNetBase import BallLocalization
-from models.ballLocalization.model_mobileNetV3Base import BallLocalization
+#from models.ballLocalization.model_mobileNetV3Base import BallLocalization
+from model_mobileNetV3Small import BallLocalization
 import numpy as np
 import random
 
@@ -66,9 +67,9 @@ def track_and_plot_gradients(epoch, model, outputs, save_path="gradient_plots/gr
     plt.close()
 
     #Print some key gradients
-    print(f"Epoch {epoch+1} - Sample Gradients:")
-    for i in range(0, len(layer_names), max(1, len(layer_names) // 5)):
-        print(f"  {layer_names[i]}: {grad_norms[i]}")
+    # print(f"Epoch {epoch+1} - Sample Gradients:")
+    # for i in range(0, len(layer_names), max(1, len(layer_names) // 5)):
+    #     print(f"  {layer_names[i]}: {grad_norms[i]}")
 
     return grad_norms
 
@@ -79,7 +80,7 @@ def train_one_epoch( epoch, model, optimizer, scheduler,loss_function, train_loa
     for i, batch in enumerate(train_loader):
         image, x, y, x_pre227scaling, y_pre227scaling = batch[:5]
         print(f"Batch Number : {i+1}")
-        print(f"Inputs: {x[0]}, {y[0]}")
+        #print(f"Inputs: {x[0]}, {y[0]}")
         image, x, y = image.to(device), x.to(device), y.to(device)
         
         #actual_x, actual_y = x, y
@@ -95,7 +96,8 @@ def train_one_epoch( epoch, model, optimizer, scheduler,loss_function, train_loa
         optimizer.zero_grad()
         
         output = model(images) 
-        print(output.shape)
+        #print(output.shape)
+       # print(output)
         pred_x, pred_y = output[0, 0].item(), output[0, 1].item()
         #print(f"output x: {pred_x},  y: {pred_y}")
         
@@ -165,7 +167,7 @@ def train(epochs: Optional[int] = 1, **kwargs) -> None:
     counter = 0
     best_val_loss = float("inf")
     patience = 10 #number of epochs with allowed with no improvement
-    for epoch in range(30,epochs):
+    for epoch in range(epochs):
         
         #train model and add loss values to array
         train_loss = train_one_epoch(epoch, model, optimizer, scheduler,loss_function, train_loader, test_loader, 
@@ -287,7 +289,7 @@ def main():
     #    {'params': model.model.features.parameters(), 'lr': 1e-4},
     #   {'params': model.model.classifier.parameters(), 'lr': 1e-3},
     #], weight_decay=1e-5)
-    optimizer = optim.Adam(model.parameters(), lr=1e-6, weight_decay=1e-5)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min')
     loss_function = nn.HuberLoss(delta=22.7)
 
