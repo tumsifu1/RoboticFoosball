@@ -28,12 +28,12 @@ while(True):
 
     sleep(5)
 
-    print(ball_old)
-    print(ball_new)
+    # print(ball_old)
+    # print(ball_new)
 
-    get_velocities(ball_old, ball_new)
+    # get_velocities(ball_old, ball_new)
 
-    print("finished")
+    # print("finished")
 
     break
 

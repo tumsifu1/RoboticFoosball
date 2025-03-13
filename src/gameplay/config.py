@@ -39,3 +39,5 @@ MIN_MOVEMENT = 10
 player_ys = [[0,0,0],[0,0,0],[0,0,0]]
 
 myKit=ServoKit(channels=16)
+
+
