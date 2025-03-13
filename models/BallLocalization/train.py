@@ -13,7 +13,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
-from models.BallLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
+from FoosballDatasetLocalizer import FoosballDatasetLocalizer
 #from models.ballLocalization.model_snoutNetBase import BallLocalization
 #from models.ballLocalization.model_mobileNetV3Base import BallLocalization
 from model_mobileNetV3Small import BallLocalization
