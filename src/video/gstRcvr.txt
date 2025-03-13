@@ -1,0 +1,1 @@
+gst-launch-1.0 udpsrc port=5000 buffer-size=200000 caps="application/x-rtp, encoding-name=H264, payload=96" ! rtpjitterbuffer latency=100 drop-on-latency=true do-lost=true ! rtph264depay ! h264parse ! queue max-size-buffers=3 leaky=downstream ! nvv4l2decoder enable-max-performance=1 disable-dpb=true ! nvvidconv ! autovideosink sync=false
