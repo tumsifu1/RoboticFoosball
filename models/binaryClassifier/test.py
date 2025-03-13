@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from FoosballDataset import FoosballDataset
-from model import BinaryClassifier
+from models.binaryClassifier.model_resNet18Base import BinaryClassifier
 import numpy as np
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
@@ -68,7 +68,7 @@ def test(**kwargs) -> None:
             #print(test_preds)
             test_labels.extend(labels.cpu().tolist())
 
-            #displayImage(images, labels[0], pred[0])
+            displayImage(images, labels[0], pred[0])
     test_preds = np.array(test_preds)
     test_labels = np.array(test_labels)
     saveConfusionMatrix(test_labels, test_preds , output_dir)
@@ -81,7 +81,7 @@ def main():
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
-    argParser.add_argument('-model', metavar='model', type=str, help='path to model', default='./output/binary_classifier/best_model.pth')
+    argParser.add_argument('-model', metavar='model', type=str, help='path to model', default='./src/weights/classifier.pth') 
     args = argParser.parse_args()
 
     test_images = "./data/test/images"

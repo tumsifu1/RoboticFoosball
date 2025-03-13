@@ -188,7 +188,7 @@ class FoosballDataset(Dataset):
         #conmvert to tensor
         # Apply augmentations if training
         x, y = keypoints[0], keypoints[1]
-        if self.train:
+        if self.train and False:
             keypoints = [keypoints] #wrap in list
             augmented = self.aug_pipeline(image=image.permute(1, 2, 0).numpy(),keypoints=keypoints)
             image = torch.tensor(augmented['image']).permute(2, 0, 1).float()  # Convert back to CHW

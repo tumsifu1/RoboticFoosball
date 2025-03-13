@@ -4,13 +4,15 @@ import torch
 import json
 from torchvision import transforms
 from models.binaryClassifier.FoosballDataset import FoosballDataset
+from models.binaryClassifier.model_resNet18Base import BinaryClassifier 
 from src.tools.unnormalize import unnormalize
 import matplotlib.pyplot as plt
+import numpy as np
 import cv2
 from PIL import Image
 json_path = "data/train/labels/labels.json"
 images_dir = "data/train/images"
-
+from torchvision import transforms
 test_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor()
@@ -23,10 +25,11 @@ print(f"Dataset size: {len(dataset)}")
 
 def visulize_image(): #You must comment out to tensor in the preprocess
     """Visualize a full image from the dataset."""
-    img_name = "img_2561.jpg"
+    img_name = "img_0.jpg"
     img_path = "data/images/" + img_name
     image = Image.open(img_path).convert('RGB')
-    image = dataset.preprocessImage(image)
+    #1102,
+    #646
     ball_exists = True
     x = 0
     y = 0
@@ -38,13 +41,110 @@ def visulize_image(): #You must comment out to tensor in the preprocess
     x = ballData["x"]
     y = ballData["y"]
 
-    image = unnormalize(image)
-    plt.imshow(image.permute(1, 2, 0))
+    #image = unnormalize(image)
+    image_array = np.array(image)
+
+    plt.imshow(image_array)
     plt.axis("off")
-    plt.title(f"Ball")
+    plt.title(f"Full Image")
     #remove pre process and normilization)
-    plt.scatter(x, y, c='r', s=50)
+    plt.scatter(x, y, c='r', s=25)
     plt.show() 
+
+def slice_images():
+    img_name = "img_80.jpg"
+    img_path = "data/images/" + img_name
+    image = Image.open(img_path).convert('RGB')
+
+    transform = transforms.ToTensor()
+    image = transform(image)
+
+    dataset = FoosballDataset(images_dir="data/images", json_path="data/labels/labels.json", transform=None, train=False)
+    regions = dataset.breakImageIntoRegions(image)  # Get 64 sliced regions
+
+    fig, axes = plt.subplots(8, 8, figsize=(12, 12))
+    fig.subplots_adjust(hspace=0.3, wspace=0.3)
+
+    for i, ax in enumerate(axes.flat):
+        if i >= len(regions):
+            ax.axis("off")
+            continue
+
+        img_np = regions[i].permute(1, 2, 0).cpu().numpy()
+        img_np = np.clip(img_np, 0, 1)
+
+        ax.imshow(img_np)
+        ax.axis("off")
+
+    # Save the figure
+    plt.savefig("sliced_images.png", dpi=300, bbox_inches='tight')
+    plt.show()
+
+def display_images(device): 
+    img_name = "img_80.jpg"
+    img_path = "data/images/" + img_name
+    image = Image.open(img_path).convert('RGB')
+    
+    transform = transforms.ToTensor()
+    image = transform(image)
+    
+    model = BinaryClassifier()
+    model.load_state_dict(torch.load("./src/weights/classifier.pth", map_location=device))  # Load weights
+    model.to(device)
+    model.eval()
+    
+    dataset = FoosballDataset(images_dir="data/images", json_path="data/labels/labels.json", transform=None, train=False)
+    regions = dataset.breakImageIntoRegions(image)
+    
+    all_probs = []  # Store all prediction probabilities
+
+    with torch.no_grad():
+        for region in regions:
+            region = region.unsqueeze(0).to(device)  # Add batch dimension
+            output = model(region)
+            prob = torch.sigmoid(output).item()  # Convert to scalar
+            all_probs.append(prob)
+
+    # Convert list to tensor for argmax
+    all_probs = torch.tensor(all_probs)
+    max_index = torch.argmax(all_probs).item()
+
+    # Create binary predictions (only one highest gets 1)
+    pred = torch.zeros_like(all_probs)
+    pred[max_index] = 1
+
+    #did not unom
+    unnorm_images = regions 
+
+    fig, axes = plt.subplots(8, 8, figsize=(12, 12))
+    fig.subplots_adjust(hspace=0.3, wspace=0.3)
+
+    for i, ax in enumerate(axes.flat):
+        if i >= len(regions):
+            ax.axis("off")
+            continue
+
+        img_np = unnorm_images[i].permute(1, 2, 0).cpu().numpy()
+        img_np = np.clip(img_np, 0, 1)
+
+        ax.imshow(img_np)
+        ax.axis("off")
+
+        # Highlight only the highest probability region
+        if pred[i] == 1:
+            ax.spines['top'].set_color('red')
+            ax.spines['bottom'].set_color('red')
+            ax.spines['left'].set_color('red')
+            ax.spines['right'].set_color('red')
+            ax.spines['top'].set_linewidth(3)
+            ax.spines['bottom'].set_linewidth(3)
+            ax.spines['left'].set_linewidth(3)
+            ax.spines['right'].set_linewidth(3)
+
+        ax.set_title(f"Pred: {int(pred[i])}", fontsize=6, color='white', backgroundcolor='black')
+    plt.savefig("prediction.png", dpi=300, bbox_inches='tight')
+    plt.show()
+
 
 def test_dataloader():
     """Test the dataloader by displaying images and labels."""
@@ -130,7 +230,9 @@ def main():
     #visulize_image()
     #test_collate_fn()
     #test_getRegionWithBall_createdData()
-    test_dataloader()
+    slice_images()
+    display_images( "cpu")
+    #test_dataloader()
 
 if __name__ == "__main__":
     main()
