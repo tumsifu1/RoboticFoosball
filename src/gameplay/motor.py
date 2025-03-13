@@ -47,35 +47,51 @@ def motor_drive(rod_move, movement_amount):
         #another place where the state array will change is within the trajectory mapping function
         #as it will have the new ball locations, only question is how often will it be run?
         #every 2 frames, every few?
-    print("servo kit created")
+    myKit.servo[rod_move].angle = None
 
-    
-    counter = 0
-    while True:
-        myKit.servo[0].angle = None
+    print("moving motor up")
+    for i in arange(0, 1, 0.1):
+        myKit.servo[rod_move].angle = i
+        time.sleep(0.005)
+    myKit.servo[rod_move].angle = None
+    time.sleep(1)
+    print("moving motor down")
+    for i in arange(1, 0, -0.1):
+        myKit.servo[rod_move].angle = i
+        time.sleep(0.005)
 
-        print("moving motor")
-        for i in arange(2,0,-0.1):
-            myKit.servo[rod_move].angle=i
-            time.sleep(0.1)
-        print("stopping motor")
-
-        print("moving motor")
-        for i in arange(0,2,0.1):
-            myKit.servo[rod_move].angle=i
-            time.sleep(0.1)
-        myKit.servo[0].angle = None
-        print("stopping motor")
-
-        # print("shot")
-        # for i in range(0,45,1):
-        #     myKit.servo[1].angle=i
-        #     time.sleep(0.01)
-        # print("shot done")
-
-        # myKit.servo[1].angle = None
+    # Stop motor
+    myKit.servo[rod_move].angle = None
+    print("motor stopped")
 
 
-        break
+
+    # counter = 0
+    # while True:
+    #     myKit.servo[rod_move].angle = None
+
+    #     print("moving motor")
+    #     for i in arange(1,0,-0.1):
+    #         myKit.servo[rod_move].angle=i
+    #         time.sleep(10)
+    #     print("stopping motor")
+
+    #     print("moving motor")
+    #     for i in arange(0,1,0.1):
+    #         myKit.servo[rod_move].angle=i
+    #         time.sleep(10)
+    #     myKit.servo[rod].angle = None
+    #     print("stopping motor")
+
+    #     # print("shot")
+    #     # for i in range(0,45,1):
+    #     #     myKit.servo[1].angle=i
+    #     #     time.sleep(0.01)
+    #     # print("shot done")
+
+    #     # myKit.servo[1].angle = None
+
+
+    #     break
 
     return
