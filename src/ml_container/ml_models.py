@@ -1,5 +1,9 @@
 import zmq
 import time
+import gi
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst, GLib
+import numpy as np
 from ingest_stream import process_frame
 
 # ZeroMQ Context
@@ -7,8 +11,13 @@ context = zmq.Context()
 
 # Create PUSH socket
 socket = context.socket(zmq.PUSH)
+socket.setsockopt(zmq.IMMEDIATE, 1)
+socket.setsockopt(zmq.SNDHWM, 1)  # Limit send buffer to 1 message
+
 socket.bind("ipc:///tmp/ball_updates")  # IPC for low latency
 time.sleep(2)
+
+start = time.time()
 
 def ingest_stream():
     Gst.init(None)
@@ -26,7 +35,9 @@ def ingest_stream():
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
                     coords = process_frame(frame)
-                    socket.send_string(coords)
+                    outp = f"{coords[0]},{coords[1]},{int(start - time.time() * 1000)}"
+                    print(f"Sending Coords: {outp}")
+                    socket.send_string(outp)
 
                 buffer.unmap(map_info)
         

@@ -3,6 +3,8 @@ services:
   ml_container:
     build: ./src/ml_container
     runtime: nvidia  # Enable NVIDIA runtime
+    ports:
+      - "5000:5000/udp"
     environment:
       - NVIDIA_VISIBLE_DEVICES=all  # Make all GPUs visible to the container
     volumes:
