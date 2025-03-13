@@ -41,6 +41,7 @@ def trigger_motor(rod_move, y_rod_new):
 
 
 def motor_drive(rod_move, movement_amount):
+    
     print(f"Moving rod {rod_move} by {movement_amount:.2f} pixels.")
     #Here the code will be to convert pixels into rotations of motor, etc
         #will also implement the array changing within this
@@ -55,6 +56,7 @@ def motor_drive(rod_move, movement_amount):
         time.sleep(0.005)
     myKit.servo[rod_move].angle = None
     time.sleep(1)
+
     print("moving motor down")
     for i in arange(1, 0, -0.1):
         myKit.servo[rod_move].angle = i
@@ -64,34 +66,11 @@ def motor_drive(rod_move, movement_amount):
     myKit.servo[rod_move].angle = None
     print("motor stopped")
 
-
-
-    # counter = 0
-    # while True:
-    #     myKit.servo[rod_move].angle = None
-
-    #     print("moving motor")
-    #     for i in arange(1,0,-0.1):
-    #         myKit.servo[rod_move].angle=i
-    #         time.sleep(10)
-    #     print("stopping motor")
-
-    #     print("moving motor")
-    #     for i in arange(0,1,0.1):
-    #         myKit.servo[rod_move].angle=i
-    #         time.sleep(10)
-    #     myKit.servo[rod].angle = None
-    #     print("stopping motor")
-
-    #     # print("shot")
-    #     # for i in range(0,45,1):
-    #     #     myKit.servo[1].angle=i
-    #     #     time.sleep(0.01)
-    #     # print("shot done")
-
-    #     # myKit.servo[1].angle = None
-
-
-    #     break
+    print("shot")
+    for i in range(0,45,-1):
+        myKit.servo[rod_move+3].angle=i
+        time.sleep(0.01)
+    print("shot done")
+    myKit.servo[rod_move+3].angle = None
 
     return
