@@ -1,24 +1,17 @@
 import zmq
-import json
 import time
-import msgpack
 
-context = zmq.Context()  # todo sudo apt docker and make sure you have daemon running (at least on mac it didn't start with it)
-socket = context.socket(zmq.PUB)  # Changed from PAIR to PUB
-socket.bind("tcp://0.0.0.0:5555")
+# ZeroMQ Context
+context = zmq.Context()
 
-print("ML Container is running... Waiting for connection.")
-time.sleep(2)  # give the motor container time to start
-
-while True:  # todo add process for ingestion and running the models here
-    try:
-        print("In while loop")
-        data = {"ball_x": 100, "ball_y": 50}
-        message = msgpack.packb(data)
-        socket.send(message)  # PUB does not need zmq.DONTWAIT
-    except zmq.ZMQError as e:
-        print(f"ZeroMQ error: {e}")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-
-    time.sleep(1)  # todo remove this sleep it's just for debugging so you don't get lots of messages
+# Create PUSH socket
+socket = context.socket(zmq.PUSH)
+socket.bind("ipc:///tmp/ball_updates")  # IPC for low latency
+time.sleep(2)
+while True:
+    # Replace with actual ball position from ML model
+    ball_coordinates = "100,200"  # Example coordinates
+    socket.send_string(ball_coordinates)
+    print(f"Sent ball coordinates: {ball_coordinates}")
+    
+    time.sleep(0.01)  # Adjust based on frame rate (e.g., 100 FPS → 10ms)

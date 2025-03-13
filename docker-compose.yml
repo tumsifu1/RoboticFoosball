@@ -1,22 +1,13 @@
 version: "3.8"
-
 services:
-  publisher:
+  ml_container:
     build: ./src/ml_container
-    container_name: publisher
-    ports:
-      - "5555:5555"
-    networks:
-      - app_network
+    ipc: "host"  # Enable IPC communication
+    volumes:
+      - /tmp:/tmp  # Share IPC socket
 
   motor_container:
     build: ./src/motor_container
-    container_name: motor_container
-    depends_on:
-      - publisher
-    networks:
-      - app_network
-
-networks:
-  app_network:
-    driver: bridge
+    ipc: "host"  # Enable IPC communication
+    volumes:
+      - /tmp:/tmp  # Share IPC socket

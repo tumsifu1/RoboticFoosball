@@ -1,14 +1,19 @@
 import zmq
-import msgpack
 
+# ZeroMQ Context
 context = zmq.Context()
-socket = context.socket(zmq.SUB) 
-socket.connect("tcp://publisher:5555")
-socket.setsockopt_string(zmq.SUBSCRIBE, "")
-socket.setsockopt(zmq.CONFLATE, 1)
-print("Motor Container is running... Waiting for data.")
+
+# Create PULL socket
+socket = context.socket(zmq.PULL)
+socket.connect("ipc:///tmp/ball_updates")  # Connect to IPC channel
 
 while True:
-    message = socket.recv()  # Blocking call, waits for data
-    data = msgpack.unpackb(message)
-    print(f"Received Ball Position: X={data['ball_x']}, Y={data['ball_y']}")
+    # Receive ball coordinates
+    message = socket.recv_string()
+    print(f"Received ball coordinates: {message}")
+    
+    # Parse (x, y) coordinates
+    x, y = map(int, message.split(","))
+    
+    # TODO: Add motor movement logic here
+    # move_motors(x, y)

@@ -227,6 +227,8 @@ def process_frame(frame):
     total_end = time.time()
     total_time = total_end - total_start
     print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
+
+    return detected_positions[0]
     
     # Plot if debugging is enabled
     if DEBUG:
