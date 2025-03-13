@@ -1,20 +1,18 @@
-import cv2
 import numpy as np
 import torch
 from models.binaryClassifier.model import BinaryClassifier
 from models.BallLocalization.model_snoutNetBase import BallLocalization
 import torch.nn.functional as F
-import time
-from torchvision import transforms
-from multiprocessing import Process, Queue
+from torchvision.transforms import Compose, Normalize
+# from multiprocessing import Process, Queue
 import matplotlib.pyplot as plt
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 import time
+import cv2
 
-# Global dictionary to store timing statistics
-DEBUG = False
+DEBUG = True
 
 # Setup Device
 device = torch.device("cuda")
@@ -30,12 +28,11 @@ localizer.load_state_dict(torch.load('./src/weights/localizer.pth', map_location
 COMPUTED_MEAN = [0.1249, 0.1399, 0.1198]
 COMPUTED_STD = [0.1205, 0.1251, 0.1123]
 
-preprocess = transforms.Compose([
-    transforms.Normalize(mean=COMPUTED_MEAN, std=COMPUTED_STD)
+preprocess = Compose([
+    Normalize(mean=COMPUTED_MEAN, std=COMPUTED_STD)
 ])
 
-# Frame queue (ensure only latest frame is processed)
-# frame_queue = Queue(maxsize=10)
+# frame_queue = Queue(maxsize=1)
 
 def segment_image_fast(image, grid_size=8):
     """Fast segmentation of a PIL image into grid_size x grid_size tiles."""
@@ -70,13 +67,9 @@ def ingest_stream():
             height = caps.get_structure(0).get_int("height")[1]
             success, map_info = buffer.map(Gst.MapFlags.READ)
             if success:
-                # print(f"Buffer size: {len(map_info.data)} | Expected: {width * height * 3}")
-                
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
                     process_frame(frame)
-                    # print(f"Type: {type(frame)}, dtype: {frame.dtype}, shape: {frame.shape}, min: {frame.min()}, max: {frame.max()}")
-                    # print("Frame successfully reshaped.")
 
 
                 buffer.unmap(map_info)
@@ -99,12 +92,9 @@ def ingest_stream():
     loop = GLib.MainLoop()
     try:
         loop.run()
-        if frame_queue:
-            loop.quit()
     except KeyboardInterrupt:
         print("Stopping...")
         pipeline.set_state(Gst.State.NULL)
-        cv2.destroyAllWindows()
 
 def plot_detections(original_image, detected_tile, detected_positions, grid_size, image_shape):
     """Plot both the original image and detected tile with ball positions."""
@@ -182,6 +172,7 @@ def process_frame(frame):
     # Preprocess
     tiles_tensor = preprocess(tiles_tensor)
     tiles_tensor = tiles_tensor.to(device)
+
     preproc_end = time.time()
     print(f"Tensor Preprocess time: {(preproc_end - preproc_start) * 1000:.2f} ms")
     
@@ -194,7 +185,7 @@ def process_frame(frame):
         probs = torch.sigmoid(logits).squeeze()
         classifier_end = time.time()
         print(f"Classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
-        
+        print(f"Logits:\n{logits}\bProbs:\n{probs}")
         # Resize for localizer
         localizer_start = time.time()
         tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
@@ -221,7 +212,12 @@ def process_frame(frame):
     if detected_positions:
         row, col, _ = detected_positions[0]
         tile_idx = row * grid_size + col
-        detected_tile = tiles[tile_idx]
+        H, W, _ = frame.shape
+        region_h, region_w = H // grid_size, W // grid_size
+        y = row * region_h
+        x = col * region_w
+        detected_tile = reconstructed_image[y:y+region_h, x:x+region_w]
+
     else:
         detected_tile = np.zeros_like(tiles[0])
     recon_end = time.time()
