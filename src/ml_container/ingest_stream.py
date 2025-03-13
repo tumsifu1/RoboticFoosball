@@ -69,8 +69,8 @@ def ingest_stream():
             if success:
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
-                    process_frame(frame)
-
+                    coords = process_frame(frame)
+                    
 
                 buffer.unmap(map_info)
         
@@ -227,8 +227,8 @@ def process_frame(frame):
     total_end = time.time()
     total_time = total_end - total_start
     print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
-
-    return detected_positions[0]
+    print(detected_positions[-1])
+    return detected_positions[-1]
     
     # Plot if debugging is enabled
     if DEBUG:
