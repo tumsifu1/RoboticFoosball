@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from FoosballDataset import FoosballDataset
-from model import BinaryClassifier
+#from models.binaryClassifier.model_resNet18Base import BinaryClassifier
+from model_mobileNetV3Small import BinaryClassifier
 import numpy as np
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
@@ -81,7 +82,7 @@ def main():
     argParser.add_argument('-labels', metavar='labels', type=str, help='path to labels directory', default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, help='batch size, defaults to 64', default=64)
     argParser.add_argument('-output', metavar='output', type=str, help='output directory', default='./output/binary_classifier')
-    argParser.add_argument('-model', metavar='model', type=str, help='path to model', default='./output/binary_classifier/best_model.pth')
+    argParser.add_argument('-model', metavar='model', type=str, help='path to model', default='./src/weights/classifier.pth') 
     args = argParser.parse_args()
 
     test_images = "./data/test/images"
@@ -103,7 +104,7 @@ def main():
 
     #load the model
     model = BinaryClassifier()
-    model.load_state_dict(torch.load(args.model))# Apply weights from training
+    model.load_state_dict(torch.load(args.model, map_location=torch.device(device)))# Apply weights from training
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)

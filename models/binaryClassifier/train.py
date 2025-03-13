@@ -14,10 +14,11 @@ from torchvision import transforms, datasets
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from FoosballDataset import FoosballDataset
-from model import BinaryClassifier
+from model_mobileNetV3Small import BinaryClassifier
 import numpy as np
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
 
 def train(epochs: Optional[int] = 1, **kwargs) -> None:
     print("Starting training...")
@@ -88,7 +89,7 @@ def train(epochs: Optional[int] = 1, **kwargs) -> None:
                 all_labels.extend(labels.cpu().tolist())
                 
         val_loss /= len(val_loader)
-        losses_val.append(val_loss)
+        losses_val.append(val_loss.item())
 
         #scheduler step
         scheduler.step(val_loss)
