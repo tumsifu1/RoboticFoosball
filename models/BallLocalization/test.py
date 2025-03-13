@@ -10,9 +10,10 @@ import numpy as np
 import random
 import torch.nn.functional as F
 # Import your dataset and model
-from models.ballLocalization.FoosballDatasetLocalizer import FoosballDatasetLocalizer
-from models.ballLocalization.model_snoutNetBase import BallLocalization
+from FoosballDatasetLocalizer import FoosballDatasetLocalizer
+#from models.ballLocalization.model_snoutNetBase import BallLocalization
 #from models.ballLocalization.model_mobileNetV3Base import BallLocalization
+from model_mobileNetV3Small import BallLocalization
 
 min_distance,  max_distance, sum_distance, sum_squared_distance = float('inf'), float('-inf'), 0, 0,
 # Define a custom unnormalize function
@@ -136,7 +137,7 @@ def main():
     argParser.add_argument('-labels', metavar='labels', type=str, default='./data/labels/labels.json')
     argParser.add_argument('-batch', metavar='batch_size', type=int, default=1)
     argParser.add_argument('-output', metavar='output', type=str, default='./output/ball_Localization')
-    argParser.add_argument('-model', metavar='model', type=str, default='output/ball_Localization/best_model_mse11_sd10.pth')
+    argParser.add_argument('-model', metavar='model', type=str, default='./src/weights/localizer.pth')
     args = argParser.parse_args()
 
     test_images = "./data/test/images"
@@ -155,7 +156,7 @@ def main():
 
     model = BallLocalization()
     print(args.model)
-    model.load_state_dict(torch.load(args.model))# Apply weights from training
+    model.load_state_dict(torch.load(args.model, map_location=torch.device(device)))# Apply weights from training
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)

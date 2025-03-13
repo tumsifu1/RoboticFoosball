@@ -167,7 +167,7 @@ def train(epochs: Optional[int] = 1, **kwargs) -> None:
     counter = 0
     best_val_loss = float("inf")
     patience = 10 #number of epochs with allowed with no improvement
-    for epoch in range(30,epochs):
+    for epoch in range(epochs):
         
         #train model and add loss values to array
         train_loss = train_one_epoch(epoch, model, optimizer, scheduler,loss_function, train_loader, test_loader, 
@@ -289,7 +289,7 @@ def main():
     #    {'params': model.model.features.parameters(), 'lr': 1e-4},
     #   {'params': model.model.classifier.parameters(), 'lr': 1e-3},
     #], weight_decay=1e-5)
-    optimizer = optim.Adam(model.parameters(), lr=1e-6, weight_decay=1e-5)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,'min')
     loss_function = nn.HuberLoss(delta=22.7)
 

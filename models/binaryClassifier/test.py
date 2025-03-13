@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 from torch.utils.data import random_split, DataLoader
 from typing import Optional
 from FoosballDataset import FoosballDataset
-from models.binaryClassifier.model_resNet18Base import BinaryClassifier
+#from models.binaryClassifier.model_resNet18Base import BinaryClassifier
+from model_mobileNetV3Small import BinaryClassifier
 import numpy as np
 import random
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
@@ -68,7 +69,7 @@ def test(**kwargs) -> None:
             #print(test_preds)
             test_labels.extend(labels.cpu().tolist())
 
-            displayImage(images, labels[0], pred[0])
+            #displayImage(images, labels[0], pred[0])
     test_preds = np.array(test_preds)
     test_labels = np.array(test_labels)
     saveConfusionMatrix(test_labels, test_preds , output_dir)
@@ -103,7 +104,7 @@ def main():
 
     #load the model
     model = BinaryClassifier()
-    model.load_state_dict(torch.load(args.model))# Apply weights from training
+    model.load_state_dict(torch.load(args.model, map_location=torch.device(device)))# Apply weights from training
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
