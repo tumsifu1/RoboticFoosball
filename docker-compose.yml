@@ -2,9 +2,13 @@ version: "3.8"
 services:
   ml_container:
     build: ./src/ml_container
-    ipc: "host"  # Enable IPC communication
+    runtime: nvidia  # Enable NVIDIA runtime
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all  # Make all GPUs visible to the container
     volumes:
       - /tmp:/tmp  # Share IPC socket
+      - /usr/local/cuda-10.2:/usr/local/cuda-10.2:ro  # Mount CUDA libraries from host
+    ipc: "host"  # Enable IPC communication
 
   motor_container:
     build: ./src/motor_container

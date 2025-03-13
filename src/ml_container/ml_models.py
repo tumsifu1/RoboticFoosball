@@ -9,7 +9,6 @@ context = zmq.Context()
 socket = context.socket(zmq.PUSH)
 socket.bind("ipc:///tmp/ball_updates")  # IPC for low latency
 time.sleep(2)
-ingest_stream()
 
 def ingest_stream():
     Gst.init(None)
@@ -52,3 +51,6 @@ def ingest_stream():
     except KeyboardInterrupt:
         print("Stopping...")
         pipeline.set_state(Gst.State.NULL)
+
+if __name__ == "__main__":
+    ingest_stream()

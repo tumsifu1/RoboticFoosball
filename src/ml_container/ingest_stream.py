@@ -1,18 +1,15 @@
 import numpy as np
 import torch
-from models.binaryClassifier.model import BinaryClassifier
-from models.BallLocalization.model_snoutNetBase import BallLocalization
+from models.binary_classifier import BinaryClassifier
+from models.localizer import BallLocalization
 import torch.nn.functional as F
 from torchvision.transforms import Compose, Normalize
 # from multiprocessing import Process, Queue
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 import time
-import cv2
-
-DEBUG = True
 
 # Setup Device
 device = torch.device("cuda")
@@ -21,8 +18,8 @@ device = torch.device("cuda")
 classifier = BinaryClassifier().to(device).eval()
 localizer = BallLocalization().to(device).eval()
 
-classifier.load_state_dict(torch.load('./src/weights/classifier.pth', map_location=device))
-localizer.load_state_dict(torch.load('./src/weights/localizer.pth', map_location=device))
+classifier.load_state_dict(torch.load('./weights/classifier.pth', map_location=device))
+localizer.load_state_dict(torch.load('./weights/localizer.pth', map_location=device))
 
 # Preprocessing Pipeline
 COMPUTED_MEAN = [0.1249, 0.1399, 0.1198]
@@ -96,32 +93,32 @@ def ingest_stream():
         print("Stopping...")
         pipeline.set_state(Gst.State.NULL)
 
-def plot_detections(original_image, detected_tile, detected_positions, grid_size, image_shape):
-    """Plot both the original image and detected tile with ball positions."""
+# def plot_detections(original_image, detected_tile, detected_positions, grid_size, image_shape):
+#     """Plot both the original image and detected tile with ball positions."""
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+#     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
-    # Plot full image
-    axes[0].imshow(original_image)
-    axes[0].set_title("Original Image with Absolute Coordinates")
+#     # Plot full image
+#     axes[0].imshow(original_image)
+#     axes[0].set_title("Original Image with Absolute Coordinates")
 
-    # Overlay absolute coordinates
-    H, W, _ = image_shape
-    region_h, region_w = H // grid_size, W // grid_size
-    for row, col, prob in detected_positions:
-        x_abs = int((col + 0.5) * region_w)  # Center of tile
-        y_abs = int((row + 0.5) * region_h)  
-        axes[0].scatter(x_abs, y_abs, c='red', marker='o', s=100, label="Ball Position")
+#     # Overlay absolute coordinates
+#     H, W, _ = image_shape
+#     region_h, region_w = H // grid_size, W // grid_size
+#     for row, col, prob in detected_positions:
+#         x_abs = int((col + 0.5) * region_w)  # Center of tile
+#         y_abs = int((row + 0.5) * region_h)  
+#         axes[0].scatter(x_abs, y_abs, c='red', marker='o', s=100, label="Ball Position")
 
-    # Plot detected tile
-    axes[1].imshow(detected_tile)
-    axes[1].set_title("Detected Tile with Relative Coordinates")
+#     # Plot detected tile
+#     axes[1].imshow(detected_tile)
+#     axes[1].set_title("Detected Tile with Relative Coordinates")
 
-    # Overlay relative coordinates (center of tile)
-    axes[1].scatter(region_w // 2, region_h // 2, c='red', marker='o', s=100, label="Ball Position")
+#     # Overlay relative coordinates (center of tile)
+#     axes[1].scatter(region_w // 2, region_h // 2, c='red', marker='o', s=100, label="Ball Position")
 
-    plt.show(block=False)
-    plt.pause(0.001)
+#     plt.show(block=False)
+#     plt.pause(0.001)
 
 def reconstruct_image(tiles, grid_size, image_shape):
     """Rebuild the original image from tiles."""
@@ -227,7 +224,7 @@ def process_frame(frame):
     total_end = time.time()
     total_time = total_end - total_start
     print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
-    print(detected_positions[-1])
+    print(f"{detected_positions[-1][0]},{detected_positions[-1][1]},{time.time()}")
     return detected_positions[-1]
     
     # Plot if debugging is enabled
