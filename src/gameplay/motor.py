@@ -48,27 +48,22 @@ def motor_drive(rod_move, movement_amount):
         #another place where the state array will change is within the trajectory mapping function
         #as it will have the new ball locations, only question is how often will it be run?
         #every 2 frames, every few?
-    myKit.servo[rod_move].angle = None
+    myKit.servo[0].angle = None
 
-    print("moving motor up")
-    for i in arange(0, 1, 0.1):
-        myKit.servo[rod_move].angle = i
-        time.sleep(0.005)
-    myKit.servo[rod_move].angle = None
-    time.sleep(1)
+    for i in range(0,3,1):
+        myKit.servo[0].angle=i
+        time.sleep(0.5)
+    for i in range(3,0,-1):
+        myKit.servo[0].angle=i
+        time.sleep(0.5)
 
-    print("moving motor down")
-    for i in arange(1, 0, -0.1):
-        myKit.servo[rod_move].angle = i
-        time.sleep(0.005)
+    # Release servo signal
+    myKit.servo[0].angle = None
 
-    # Stop motor
-    myKit.servo[rod_move].angle = None
-    print("motor stopped")
 
     print("shot")
     for i in range(0,45,-1):
-        myKit.servo[rod_move+3].angle=i
+        myKit.servo[1].angle=i
         time.sleep(0.01)
     print("shot done")
     myKit.servo[rod_move+3].angle = None
