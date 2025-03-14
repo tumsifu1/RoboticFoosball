@@ -5,7 +5,7 @@ from models.localizer import BallLocalization
 import torch.nn.functional as F
 from torchvision.transforms import Compose, Normalize
 # from multiprocessing import Process, Queue
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
@@ -96,32 +96,32 @@ def ingest_stream():
         #print"Stopping...")
         pipeline.set_state(Gst.State.NULL)
 
-# def plot_detections(original_image, detected_tile, detected_positions, grid_size, image_shape):
-#     """Plot both the original image and detected tile with ball positions."""
+def plot_detections(original_image, detected_tile, detected_positions, grid_size, image_shape):
+    """Plot both the original image and detected tile with ball positions."""
 
-#     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 
-#     # Plot full image
-#     axes[0].imshow(original_image)
-#     axes[0].set_title("Original Image with Absolute Coordinates")
+    # Plot full image
+    axes[0].imshow(original_image)
+    axes[0].set_title("Original Image with Absolute Coordinates")
 
-#     # Overlay absolute coordinates
-#     H, W, _ = image_shape
-#     region_h, region_w = H // grid_size, W // grid_size
-#     for row, col, prob in detected_positions:
-#         x_abs = int((col + 0.5) * region_w)  # Center of tile
-#         y_abs = int((row + 0.5) * region_h)  
-#         axes[0].scatter(x_abs, y_abs, c='red', marker='o', s=100, label="Ball Position")
+    # Overlay absolute coordinates
+    H, W, _ = image_shape
+    region_h, region_w = H // grid_size, W // grid_size
+    for row, col, prob in detected_positions:
+        x_abs = int((col + 0.5) * region_w)  # Center of tile
+        y_abs = int((row + 0.5) * region_h)  
+        axes[0].scatter(x_abs, y_abs, c='red', marker='o', s=100, label="Ball Position")
 
-#     # Plot detected tile
-#     axes[1].imshow(detected_tile)
-#     axes[1].set_title("Detected Tile with Relative Coordinates")
+    # Plot detected tile
+    axes[1].imshow(detected_tile)
+    axes[1].set_title("Detected Tile with Relative Coordinates")
 
-#     # Overlay relative coordinates (center of tile)
-#     axes[1].scatter(region_w // 2, region_h // 2, c='red', marker='o', s=100, label="Ball Position")
+    # Overlay relative coordinates (center of tile)
+    axes[1].scatter(region_w // 2, region_h // 2, c='red', marker='o', s=100, label="Ball Position")
 
-#     plt.show(block=False)
-#     plt.pause(0.001)
+    plt.show(block=False)
+    plt.pause(0.001)
 
 def reconstruct_image(tiles, grid_size, image_shape):
     """Rebuild the original image from tiles."""
@@ -204,7 +204,6 @@ def process_frame(frame):
     detect_end = time.time()
     #printf"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
     print(f"Detected Position: {detected_positions[-1]}")
-    return detected_positions[-1]
     # Reconstruction
     recon_start = time.time()
     reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
@@ -230,8 +229,8 @@ def process_frame(frame):
     #printf"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
     
     # Plot if debugging is enabled
-    #if DEBUG:
-        # plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
+    plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
+    return detected_positions[-1]
 
 if __name__ == "__main__":
     #todo: uncomment out when ready to ingest
