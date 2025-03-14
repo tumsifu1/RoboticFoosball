@@ -16,8 +16,8 @@ from config import *
 ball_old, ball_cur = game_init()
 
 while(True):
-    ball_old = (380, 550, 100)
-    ball_new = (390, 560, 110)
+    ball_old = (382, 551, 12003)
+    ball_new = (395, 558, 12048)
     
     print(ball_old)
     print(ball_new)

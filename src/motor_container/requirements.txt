@@ -1,7 +1,5 @@
 Jetson.GPIO==2.0.17
-jetson-stats--4.3.1
 smbus2==0.5.0
-numpy==1.13.3
 Adafruit-Blinka==8.50.0
 adafruit-circuitpython-busdevice==5.2.10
 adafruit-circuitpython-connectionmanager==3.1.2
