@@ -101,5 +101,7 @@ def motor_drive(rod_move, movement_amount):
 
     # myKit.servo[1].angle = None
 
+    #update player positions
+    player_ys[rod_move][0,1,2] += movement_amount
 
     return
