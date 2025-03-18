@@ -53,7 +53,6 @@ def segment_image_fast(image, grid_size=8):
     
     return tiles #area of numpy images shape = (region, region_w, C)
 
-
 def ingest_stream():
     Gst.init(None)
     """Reads frames from the video stream and processes them using NVIDIA decoder (without CUDA)."""
@@ -93,7 +92,7 @@ def ingest_stream():
     try:
         loop.run()
     except KeyboardInterrupt:
-        #print"Stopping...")
+        print("Stopping...")
         pipeline.set_state(Gst.State.NULL)
 
 def plot_detections(original_image, detected_tile, detected_positions, grid_size, image_shape):
@@ -139,28 +138,26 @@ def reconstruct_image(tiles, grid_size, image_shape):
 
     return full_image
 
-
-
 def process_frame(frame):
     """Processes frames in real-time with low latency on TX2."""
     total_start = time.time()
-    #print"Processing Frame")
+    print("Processing Frame")
     
     # Segment Image into Tiles
     segment_start = time.time()
     grid_size = 8
     tiles = segment_image_fast(frame, grid_size)
     segment_end = time.time()
-    #printf"Segmentation time: {(segment_end - segment_start) * 1000:.2f} ms")
+    print(f"Segmentation time: {(segment_end - segment_start) * 1000:.2f} ms")
     
     # Stack tiles and convert to float32
     preproc_start = time.time()
     tiles = np.stack(tiles)  # Stack all tiles into a single array
     tiles = tiles.astype(np.float32)
-    #if DEBUG:
-        #printf"Stacked shape: {tiles.shape}, dtype: {tiles.dtype}")
-        #printf"Tiles array memory info: {tiles.nbytes / (1024 * 1024):.2f} MB")
-        #printf"CUDA memory before conversion: {torch.cuda.memory_allocated() / (1024 * 1024):.2f} MB")
+    if DEBUG:
+        print(f"Stacked shape: {tiles.shape}, dtype: {tiles.dtype}")
+        print(f"Tiles array memory info: {tiles.nbytes / (1024 * 1024):.2f} MB")
+        print(f"CUDA memory before conversion: {torch.cuda.memory_allocated() / (1024 * 1024):.2f} MB")
         
     # Convert to PyTorch tensor
     tiles_tensor = torch.from_numpy(tiles).permute(0, 3, 1, 2).float()
@@ -174,7 +171,7 @@ def process_frame(frame):
     tiles_tensor = tiles_tensor.to(device)
 
     preproc_end = time.time()
-    #printf"Tensor Preprocess time: {(preproc_end - preproc_start) * 1000:.2f} ms")
+    print(f"Tensor Preprocess time: {(preproc_end - preproc_start) * 1000:.2f} ms")
     
     # Run ML models
     with torch.no_grad():
@@ -184,8 +181,9 @@ def process_frame(frame):
         torch.cuda.synchronize()  # Wait for GPU operations to complete
         probs = torch.sigmoid(logits).squeeze()
         classifier_end = time.time()
-        #printf"Classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
-        #printf"Logits:\n{logits}\bProbs:\n{probs}")
+        print(f"Classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
+        if DEBUG:
+            print(f"Logits:\n{logits}\bProbs:\n{probs}")
         # Resize for localizer
         localizer_start = time.time()
         tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
@@ -194,7 +192,7 @@ def process_frame(frame):
         coordinates = localizer(tiles_tensor)
         torch.cuda.synchronize()  # Wait for GPU operations to complete
         localizer_end = time.time()
-        #printf"Localizer time: {(localizer_end - localizer_start) * 1000:.2f} ms")
+        print(f"Localizer time: {(localizer_end - localizer_start) * 1000:.2f} ms")
     
     # Detection logic
     detect_start = time.time()
@@ -202,8 +200,10 @@ def process_frame(frame):
     ball_tiles = (probs > threshold).nonzero(as_tuple=True)[0].tolist()
     detected_positions = [(idx // grid_size, idx % grid_size, probs[idx].item()) for idx in ball_tiles]
     detect_end = time.time()
-    #printf"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
-    print(f"Detected Position: {detected_positions[-1]}")
+    print(f"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
+    print(f"Detected Position: {detected_positions[0]}")
+    return detected_positions[0]
+    
     # Reconstruction
     recon_start = time.time()
     reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
@@ -221,26 +221,15 @@ def process_frame(frame):
     else:
         detected_tile = np.zeros_like(tiles[0])
     recon_end = time.time()
-    #printf"Reconstruction time: {(recon_end - recon_start) * 1000:.2f} ms")
+    print(f"Reconstruction time: {(recon_end - recon_start) * 1000:.2f} ms")
     
     # Calculate total time
     total_end = time.time()
     total_time = total_end - total_start
-    #printf"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
+    print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
     
     # Plot if debugging is enabled
     plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
-    return detected_positions[-1]
 
 if __name__ == "__main__":
-    #todo: uncomment out when ready to ingest
-    # ingest_process = Process(target=ingest_stream)
-    # process_process = Process(target=process_frame)
-
-    # ingest_process.start()
-    # process_process.start()
-
-    # ingest_process.join()
-    # process_process.join()
-
     ingest_stream()
