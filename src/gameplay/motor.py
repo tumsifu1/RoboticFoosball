@@ -47,17 +47,17 @@ def motor_drive(rod_move, movement_amount):
     myKit.servo[rod_move] = 90
 
     myKit.servo[rod_move] = 95
-    time.sleep(500)
+    time.sleep(200)
     myKit.servo[rod_move] = 90
-    time.sleep(500)
+    time.sleep(200)
     myKit.servo[rod_move] = 95
-    time.sleep(500)
+    time.sleep(200)
     myKit.servo[rod_move] = 90
 
     #update player positions
     player_ys[rod_move][0,1,2] += movement_amount
     
-    time.sleep(500)
+    time.sleep(200)
 
 
     return
