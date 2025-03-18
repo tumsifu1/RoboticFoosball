@@ -3,9 +3,6 @@ import numpy as np
 from game_init import game_init
 from trajectory import *
 import config
-import time
-import zmq
-
 
 
 """
@@ -17,19 +14,21 @@ from config import *
 
 ball_old, ball_cur = game_init()
 
-context = zmq.Context()
-socket = context.socket(zmq.REP)
-
 while(True):
 
 
-    ball_old = (382, 551, 12003)
-    ball_new = (395, 558, 12048)
-
-    # print(ball_old)
-    # print(ball_new)
-
+    ball_old = (400, 500, 10000)  # x, y, timestamp
+    ball_new = (410, 530, 10100)  # y increased → moving down
     get_velocities(ball_old, ball_new)
+
+
+
+    ball_old = (410, 500, 10000)
+    ball_new = (450, 470, 10100)  # y decreased → moving up
+    get_velocities(ball_old, ball_new)
+    
+    
+    # get_velocities(ball_old, ball_new)
 
     # print("finished")
 

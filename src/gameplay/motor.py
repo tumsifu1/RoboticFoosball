@@ -7,8 +7,7 @@ from config import *
 
 from numpy import arange
 
-import time
-
+from time import sleep
 
 
 #Add case when player centre cannot move to a position (player will run into wall), move as far as possible
@@ -33,6 +32,7 @@ def trigger_motor(rod_move, y_rod_new):
         y_rod_new = TABLE_BOTTOM - HALF_PLAYER
 
     movement_amount = y_rod_new - current_player_y
+    print(movement_amount)
 
     print(f"Player {player_index + 1} on rod {rod_move} moving from {current_player_y} to {y_rod_new:.2f}")
 
@@ -43,21 +43,26 @@ def trigger_motor(rod_move, y_rod_new):
 def motor_drive(rod_move, movement_amount):
     
     print(f"Moving rod {rod_move} by {movement_amount:.2f} pixels.")
-    
-    myKit.servo[rod_move] = 90
 
-    myKit.servo[rod_move] = 95
-    time.sleep(200)
-    myKit.servo[rod_move] = 90
-    time.sleep(200)
-    myKit.servo[rod_move] = 95
-    time.sleep(200)
-    myKit.servo[rod_move] = 90
+    if (movement_amount > 0):
+        myKit.servo[rod_move].angle = 90
+        myKit.servo[rod_move].angle = 150
+        sleep(0.25)
+        myKit.servo[rod_move].angle = 90
+        sleep(0.02)
 
-    #update player positions
-    player_ys[rod_move][0,1,2] += movement_amount
     
-    time.sleep(200)
+    if (movement_amount < 0):
+        myKit.servo[rod_move].angle = 70
+        sleep(0.15)
+        
+        myKit.servo[rod_move].angle = 75
+        time.sleep(0.5)
+        myKit.servo[rod_move].angle = 90
+  
+    # update player positions
+    for i in range(3):
+        player_ys[rod_move][i] += movement_amount
 
 
     return
