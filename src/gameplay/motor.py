@@ -77,23 +77,27 @@ def motor_drive(rod_move, movement_amount):
 
 
     myKit.servo[0].angle =0
-
-    time.sleep(5)
     
     # # # Release servo signal
     # # myKit.servo[0].angle = None
 
-    # myKit.servo[1].angle = 90
+    # myKit.servo[0].angle = None
+    # for i in range(0,1,1):
+    #     myKit.servo[0].angle = 1
+    #     time.sleep(0.01)
+    
+    # myKit.servo[0].angle = None
+
+    myKit.servo[1].angle = 90
 
     # # print("shot")
     
-    # for i in range(90,15,-1):
-    #     myKit.servo[1].angle=i
-    #     time.sleep(0.003)
+    for i in range(90,15,-1):
+        myKit.servo[1].angle=i
+        time.sleep(0.003)
 
-
-    # myKit.servo[1].angle = 15
-    # print("shot done")
+    myKit.servo[1].angle = 15
+    print("shot done")
 
     # myKit.servo[1].angle = None
 
