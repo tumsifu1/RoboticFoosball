@@ -23,13 +23,13 @@ socket = context.socket(zmq.REP)
 while(True):
 
 
-    # ball_old = (382, 551, 12003)
-    # ball_new = (395, 558, 12048)
-    
+    ball_old = (382, 551, 12003)
+    ball_new = (395, 558, 12048)
+
     # print(ball_old)
     # print(ball_new)
 
-    # get_velocities(ball_old, ball_new)
+    get_velocities(ball_old, ball_new)
 
     # print("finished")
 

@@ -43,65 +43,21 @@ def trigger_motor(rod_move, y_rod_new):
 def motor_drive(rod_move, movement_amount):
     
     print(f"Moving rod {rod_move} by {movement_amount:.2f} pixels.")
-    #Here the code will be to convert pixels into rotations of motor, etc
-        #will also implement the array changing within this
-        #another place where the state array will change is within the trajectory mapping function
-        #as it will have the new ball locations, only question is how often will it be run?
-        #every 2 frames, every few?
-    # print(myKit.servo[0].angle)
-
-#     # Set the actuation range to something standard
-#     myKit.servo[0].actuation_range = 180
-
-#     # Shrink the actual PWM range (default is around 500 to 2500)
-#     myKit.servo[0].set_pulse_width_range(1500, 2000)  # very small physical motion range
-
-#     myKit.servo[0].angle =0
-
     
-#     # Move right from 90 to 100
-#     for i in range(90, 101, 1):
-#         print(f"→ Angle: {i}")
-#         myKit.servo[0].angle = i
-#         time.sleep(0.05)
+    myKit.servo[rod_move] = 90
 
-#     time.sleep(3)
-
-# # Move left back to 90 (including 90)
-#     for i in range(100, 89, -1):
-#         print(f"← Angle: {i}")
-#         myKit.servo[0].angle = i
-#         time.sleep(0.05)
-
-    print("Done. Updated rod player positions")
-
-
-    myKit.servo[0].angle =0
-    
-    # # # Release servo signal
-    # # myKit.servo[0].angle = None
-
-    # myKit.servo[0].angle = None
-    # for i in range(0,1,1):
-    #     myKit.servo[0].angle = 1
-    #     time.sleep(0.01)
-    
-    # myKit.servo[0].angle = None
-
-    myKit.servo[1].angle = 90
-
-    # # print("shot")
-    
-    for i in range(90,15,-1):
-        myKit.servo[1].angle=i
-        time.sleep(0.003)
-
-    myKit.servo[1].angle = 15
-    print("shot done")
-
-    # myKit.servo[1].angle = None
+    myKit.servo[rod_move] = 95
+    time.sleep(500)
+    myKit.servo[rod_move] = 90
+    time.sleep(500)
+    myKit.servo[rod_move] = 95
+    time.sleep(500)
+    myKit.servo[rod_move] = 90
 
     #update player positions
     player_ys[rod_move][0,1,2] += movement_amount
+    
+    time.sleep(500)
+
 
     return
