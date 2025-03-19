@@ -4,7 +4,6 @@ from models.binary_classifier import BinaryClassifier
 from models.localizer import BallLocalization
 import torch.nn.functional as F
 from torchvision.transforms import Compose, Normalize
-# from multiprocessing import Process, Queue
 import matplotlib.pyplot as plt
 import gi
 gi.require_version('Gst', '1.0')
@@ -32,7 +31,6 @@ std_tensor = torch.tensor(COMPUTED_STD, device=device).view(1,3,1,1)
 def preprocess(tensor):
     return (tensor - mean_tensor) / std_tensor
 
-# frame_queue = Queue(maxsize=1)
 
 def segment_image_fast(image, grid_size=8):
     """Fast segmentation of a PIL image into grid_size x grid_size tiles."""
@@ -179,9 +177,8 @@ def process_frame(frame):
             classifier_start = time.time()
 
 
-        classifier_future = torch.jit.fork(classifier, tiles_tensor)
+        logits = classifier(tiles_tensor)
         coordinates = localizer(tiles_tensor)
-        logits = torch.jit.wait(classifier_future)
 
         if TIMING:
             cl_model_end = time.time()
@@ -219,22 +216,23 @@ def process_frame(frame):
     row = max_prob_idx // grid_size
     col = max_prob_idx % grid_size
 
+    if PLOT:
+        detected_positions = [(row, col, max_prob_val.cpu().item())]    
+    
     if TIMING:
         print(f"Grid mapping time: {(time.time() - argmax_end) * 1000:.2f} ms")
         grid_map_end = time.time()
 
     region_h, region_w = frame.shape[0] // grid_size, frame.shape[1] // grid_size
-    global_position = [col * region_w, row * region_h, max_prob_val]
+    global_position = [col * region_w, row * region_h]
+
+    global_position = [t.cpu().item() if torch.is_tensor(t) else t for t in global_position]
 
     print(f"Global Position: {global_position}")
 
     if TIMING:
         print(f"Global coordinate computation time: {(time.time() - grid_map_end) * 1000:.2f} ms")
         coord_end = time.time()
-    
-    if TIMING:
-        detect_end = time.time()
-        print(f"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
     
     if PLOT:
         reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
