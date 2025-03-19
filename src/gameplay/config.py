@@ -34,9 +34,9 @@ MIDDLE_ROD_X = 1000
 RIGHT_ROD_X = 1518
 
 #Minimum movement to prevent trigger motor to be called if it is too small (prevent unnecessary start/stops)
-MIN_MOVEMENT = PLAYER_WIDTH//3
+MIN_MOVEMENT = PLAYER_WIDTH//2
 
-player_ys = [[0,0,0],[0,0,0],[0,0,0]]
+player_ys = [[252, 510, 768], [252, 510, 768], [252, 510, 768]]
 
 myKit=ServoKit(channels=16)
 

@@ -15,7 +15,9 @@ def game_init():
                 player_y = player_start_y + i * PLAYER_GAP
                 player_ys[j][i] = player_y
 
-    ball_old = (-1, -1, -1)
-    ball_cur = (-1, -1, -1)
+    print(player_ys)
 
-    return ball_old, ball_cur
+    # return 
+
+
+game_init()

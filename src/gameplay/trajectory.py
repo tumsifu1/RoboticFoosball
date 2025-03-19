@@ -72,6 +72,9 @@ def get_trajectory(ball_pos_2, v_x, v_y):
 
     if abs(v_x) > 1e-6:
         t_intercept = (CURR_ROD_X - ball_pos_2[0]) / v_x
+
+        y_rod_new = ball_pos_2[1] + v_y * t_intercept
+
         y_rod_new = max(TABLE_TOP + HALF_PLAYER, min(y_rod_new, TABLE_BOTTOM - HALF_PLAYER))    #limits player to move within the bounds of the table
 
         print("t_intercept and y_rod_new", t_intercept, y_rod_new)

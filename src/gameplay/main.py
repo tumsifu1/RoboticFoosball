@@ -2,7 +2,7 @@ import numpy as np
 
 from game_init import game_init
 from trajectory import *
-import config
+from config import *
 
 
 """
@@ -12,20 +12,20 @@ main.py:    initializes game state and contains game loop that
 
 from config import *
 
-ball_old, ball_cur = game_init()
+count = 0
 
 while(True):
 
-
-    ball_old = (400, 500, 10000)  # x, y, timestamp
-    ball_new = (410, 530, 10100)  # y increased → moving down
+    ball_old = (500, 500, 10000)
+    ball_new = (600, 600, 10100)   # → v_x > 0, v_y > 0
     get_velocities(ball_old, ball_new)
 
-
-
-    ball_old = (410, 500, 10000)
-    ball_new = (450, 470, 10100)  # y decreased → moving up
+    ball_old = (600, 500, 10000)
+    ball_new = (700, 400, 10100)   # → v_x > 0, v_y < 0
     get_velocities(ball_old, ball_new)
+
+    print(player_ys)
+
     
     
     # get_velocities(ball_old, ball_new)
@@ -34,8 +34,9 @@ while(True):
 
     # time.sleep(5)
 
+    count+=1
 
-
-    break
+    if count == 5:
+        break
 
     print("hi")

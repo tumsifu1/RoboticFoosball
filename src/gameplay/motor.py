@@ -44,25 +44,39 @@ def motor_drive(rod_move, movement_amount):
     
     print(f"Moving rod {rod_move} by {movement_amount:.2f} pixels.")
 
+    sleep_amt = abs(movement_amount) / TABLE_HEIGHT * 0.25     #to replace 0.25 for actual gameplay
+
     if (movement_amount > 0):
         myKit.servo[rod_move].angle = 90
-        myKit.servo[rod_move].angle = 150
-        sleep(0.25)
+        myKit.servo[rod_move].angle = 160
+        sleep(sleep_amt)
         myKit.servo[rod_move].angle = 90
         sleep(0.02)
 
     
     if (movement_amount < 0):
         myKit.servo[rod_move].angle = 90        
-        myKit.servo[rod_move].angle = 75
-        sleep(0.25)
+        myKit.servo[rod_move].angle = 25
+        sleep(sleep_amt)
         myKit.servo[rod_move].angle = 90
         sleep(0.02)
-
   
+    #shoot ball
+    myKit.servo[rod_move + 8].angle = 90
+    sleep(0.02)
+    myKit.servo[rod_move + 8].angle = 180
+    sleep(0.1)
+    myKit.servo[rod_move + 8].angle = 90
+    sleep(0.02)
+
+    sleep(1)
+
     # update player positions
     for i in range(3):
         player_ys[rod_move][i] += movement_amount
 
+    
+    
+    
 
     return
