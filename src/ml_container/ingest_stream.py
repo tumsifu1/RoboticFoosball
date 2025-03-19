@@ -11,6 +11,9 @@ from gi.repository import Gst, GLib
 import time
 import argparse
 
+global DEBUG, TIMING, PLOT
+DEBUG, TIMING, PLOT = False, False, False
+
 # Setup Device
 device = torch.device("cuda")
 
@@ -134,6 +137,8 @@ def reconstruct_image(tiles, grid_size, image_shape):
     return full_image
 
 def process_frame(frame):
+    global DEBUG, TIMING, PLOT
+
     """Processes frames in real-time with low latency on TX2."""
     if TIMING:
         total_start = time.time()
@@ -259,17 +264,17 @@ def process_frame(frame):
 
     return global_position if global_position else None
 
-if __name__ == "__main__":
-    global DEBUG, TIMING, PLOT
-    parser = argparse.ArgumentParser()
+# if __name__ == "__main__":
+#     global DEBUG, TIMING, PLOT
+#     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-d", default='F', choices=['T','F'], help="Enable debug logs")
-    parser.add_argument("-t", default='F', choices=['T','F'], help="Enable timing logs")
-    parser.add_argument("-p", default='F', choices=['T','F'], help="Plot one output")
+#     parser.add_argument("-d", default='F', choices=['T','F'], help="Enable debug logs")
+#     parser.add_argument("-t", default='F', choices=['T','F'], help="Enable timing logs")
+#     parser.add_argument("-p", default='F', choices=['T','F'], help="Plot one output")
     
-    args = parser.parse_args()
+#     args = parser.parse_args()
     
-    DEBUG = (args.d == 'T')
-    TIMING = (args.t == 'T')
-    PLOT = (args.p == 'T')
-    ingest_stream()
+#     DEBUG = (args.d == 'T')
+#     TIMING = (args.t == 'T')
+#     PLOT = (args.p == 'T')
+#     ingest_stream()
