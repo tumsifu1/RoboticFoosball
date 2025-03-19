@@ -1,6 +1,8 @@
 version: "3.8"
 services:
   ml_container:
+    depends_on:
+      - motor_container
     build: ./src/ml_container
     runtime: nvidia  # Enable NVIDIA runtime
     ports:
