@@ -5,31 +5,25 @@ import time
 context = zmq.Context()
 
 # Create PULL socket
-socket = context.socket(zmq.PULL)
+socket = context.socket(zmq.SUB)
 socket.setsockopt(zmq.RCVHWM, 1) 
 socket.setsockopt(zmq.IMMEDIATE, 1)
+socket.connect("ipc:///tmp/ball_updates")
+socket.setsockopt_string(zmq.SUBSCRIBE, "BALL ")
+print(f"ZMQ PUB/SUB setup complete - subscribed to topic: BALL")
 
-# Try connecting with retry
-connected = False
-while not connected:
-    try:
-        socket.connect("ipc:///tmp/ball_updates")
-        connected = True
-        print("Successfully connected to ml_container")
-    except zmq.error.ZMQError as e:
-        print(f"Connection failed: {e}, retrying in 2 seconds...")
-        time.sleep(2)
+handshake_socket = context.socket(zmq.REQ)
+handshake_socket.connect("ipc:///tmp/ball_handshake")
+handshake_socket.send_string("READY")
+handshake_socket.recv_string()  # Wait for acknowledgment
+print("Connected and synchronized with ml_container")
 
-
+counter = 0
 while True:
     try:
-        # Poll with a very short timeout (1ms)
-        if socket.poll(1):
-            message = socket.recv_string(zmq.NOBLOCK)
-            print(f"Received ball coordinates: {message}")
-            # Process message
-        else:
-            # No message available
-            time.sleep(0.001)  # Small sleep to prevent CPU spinning
-    except zmq.ZMQError:
-        pass  # Handle errors
+        if socket.poll(1):  # Poll with 1ms timeout
+            message = socket.recv_string(zmq.NOBLOCK)[5:]
+            print(f"Received ball coordinates: {message}, {time.time()}")
+    except zmq.ZMQError as e:
+        print(f"Error receiving: {e}")
+

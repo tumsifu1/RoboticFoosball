@@ -10,12 +10,19 @@ from ingest_stream import process_frame
 context = zmq.Context()
 
 # Create PUSH socket
-socket = context.socket(zmq.PUSH)
+socket = context.socket(zmq.PUB)
 socket.setsockopt(zmq.IMMEDIATE, 1)
 socket.setsockopt(zmq.SNDHWM, 1)  # Limit send buffer to 1 message
 
 socket.bind("ipc:///tmp/ball_updates")  # IPC for low latency
 time.sleep(2)
+
+handshake_socket = context.socket(zmq.REP)
+handshake_socket.bind("ipc:///tmp/ball_handshake")
+print("Waiting for motor_container to connect...")
+handshake_socket.recv_string()  # Wait for ready signal
+handshake_socket.send_string("READY")
+print("Motor container connected, proceeding with processing")
 
 start = time.time()
 
@@ -35,9 +42,9 @@ def ingest_stream():
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
                     coords = process_frame(frame)
-                    outp = f"{coords[0]},{coords[1]},{int(start - time.time() * 1000)}"
+                    outp = f"{coords[0]},{coords[1]},{int((time.time() - start) * 1000)},{time.time()}"
                     print(f"Sending Coords: {outp}")
-                    socket.send_string(outp)
+                    socket.send_string(f"BALL {outp}")
 
                 buffer.unmap(map_info)
         

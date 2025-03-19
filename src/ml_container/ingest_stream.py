@@ -13,6 +13,7 @@ import time
 
 
 DEBUG = False 
+TIMING = False
 
 # Setup Device
 device = torch.device("cuda")
@@ -69,8 +70,6 @@ def ingest_stream():
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
                     coords = process_frame(frame)
-                    
-
                 buffer.unmap(map_info)
         
         return Gst.FlowReturn.OK
@@ -140,18 +139,21 @@ def reconstruct_image(tiles, grid_size, image_shape):
 
 def process_frame(frame):
     """Processes frames in real-time with low latency on TX2."""
-    total_start = time.time()
-    print("Processing Frame")
+    if TIMING:
+        total_start = time.time()
+    if DEBUG:
+        print("Processing Frame")
     
     # Segment Image into Tiles
     segment_start = time.time()
     grid_size = 8
     tiles = segment_image_fast(frame, grid_size)
-    segment_end = time.time()
-    print(f"Segmentation time: {(segment_end - segment_start) * 1000:.2f} ms")
+    if TIMING:
+        segment_end = time.time()
+        print(f"Segmentation time: {(segment_end - segment_start) * 1000:.2f} ms")
     
-    # Stack tiles and convert to float32
-    preproc_start = time.time()
+    if TIMING:
+        preproc_start = time.time()
     tiles = np.stack(tiles)  # Stack all tiles into a single array
     tiles = tiles.astype(np.float32)
     if DEBUG:
@@ -161,7 +163,8 @@ def process_frame(frame):
         
     # Convert to PyTorch tensor
     tiles_tensor = torch.from_numpy(tiles).permute(0, 3, 1, 2).float()
-    tensor_end = time.time()
+    if TIMING:
+        tensor_end = time.time()
     
     # Normalize
     tiles_tensor = tiles_tensor / 255.0
@@ -170,8 +173,9 @@ def process_frame(frame):
     tiles_tensor = preprocess(tiles_tensor)
     tiles_tensor = tiles_tensor.to(device)
 
-    preproc_end = time.time()
-    print(f"Tensor Preprocess time: {(preproc_end - preproc_start) * 1000:.2f} ms")
+    if TIMING:
+        preproc_end = time.time()
+        print(f"Tensor Preprocess time: {(preproc_end - preproc_start) * 1000:.2f} ms")
     
     # Run ML models
     with torch.no_grad():
@@ -180,56 +184,66 @@ def process_frame(frame):
         logits = classifier(tiles_tensor)
         torch.cuda.synchronize()  # Wait for GPU operations to complete
         probs = torch.sigmoid(logits).squeeze()
-        classifier_end = time.time()
-        print(f"Classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
+        if TIMING:
+            classifier_end = time.time()
+            print(f"Classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
         if DEBUG:
             print(f"Logits:\n{logits}\bProbs:\n{probs}")
         # Resize for localizer
-        localizer_start = time.time()
+        if TIMING:
+            localizer_start = time.time()
+
         tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
         
         # Run localizer
         coordinates = localizer(tiles_tensor)
         torch.cuda.synchronize()  # Wait for GPU operations to complete
-        localizer_end = time.time()
-        print(f"Localizer time: {(localizer_end - localizer_start) * 1000:.2f} ms")
+        if TIMING:
+            localizer_end = time.time()
+            print(f"Localizer time: {(localizer_end - localizer_start) * 1000:.2f} ms")
     
     # Detection logic
-    detect_start = time.time()
+    if TIMING:
+        detect_start = time.time()
+
     threshold = 0.99
     ball_tiles = (probs > threshold).nonzero(as_tuple=True)[0].tolist()
     detected_positions = [(idx // grid_size, idx % grid_size, probs[idx].item()) for idx in ball_tiles]
-    detect_end = time.time()
-    print(f"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
-    print(f"Detected Position: {detected_positions[0]}")
+    
+    if TIMING:
+        detect_end = time.time()
+        print(f"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
+    if DEBUG:
+        print(f"Detected Position: {detected_positions[0]}")
     return detected_positions[0]
     
     # Reconstruction
-    recon_start = time.time()
-    reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
+    if TIMING:
+        recon_start = time.time()
     
-    # Extract detected tile
-    if detected_positions:
-        row, col, _ = detected_positions[0]
-        tile_idx = row * grid_size + col
-        H, W, _ = frame.shape
-        region_h, region_w = H // grid_size, W // grid_size
-        y = row * region_h
-        x = col * region_w
-        detected_tile = reconstructed_image[y:y+region_h, x:x+region_w]
+    if DEBUG:
+        reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
+    
+        # Extract detected tile
+        if detected_positions:
+            row, col, _ = detected_positions[0]
+            tile_idx = row * grid_size + col
+            H, W, _ = frame.shape
+            region_h, region_w = H // grid_size, W // grid_size
+            y = row * region_h
+            x = col * region_w
+            detected_tile = reconstructed_image[y:y+region_h, x:x+region_w]
+        else:
+            detected_tile = np.zeros_like(tiles[0])
 
-    else:
-        detected_tile = np.zeros_like(tiles[0])
-    recon_end = time.time()
-    print(f"Reconstruction time: {(recon_end - recon_start) * 1000:.2f} ms")
+        if TIMING:
+            recon_end = time.time()
+            print(f"Reconstruction time: {(recon_end - recon_start) * 1000:.2f} ms")
+            total_end = time.time()
+            total_time = total_end - total_start
+            print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
     
-    # Calculate total time
-    total_end = time.time()
-    total_time = total_end - total_start
-    print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
-    
-    # Plot if debugging is enabled
-    plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
+        plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
 
 if __name__ == "__main__":
     ingest_stream()
