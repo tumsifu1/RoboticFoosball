@@ -25,11 +25,11 @@ def trigger_motor(rod_move, y_rod_new):
     #curr player pos
     current_player_y = player_ys[rod_move][player_index]
 
-    #wall proximity constraints
-    if y_rod_new - HALF_PLAYER < TABLE_TOP:
-        y_rod_new = TABLE_TOP + HALF_PLAYER     #Prevent the motors from over-running when the ball is projected to go right by the wall
-    elif y_rod_new + HALF_PLAYER > TABLE_BOTTOM:
-        y_rod_new = TABLE_BOTTOM - HALF_PLAYER
+    # #wall proximity constraints
+    # if y_rod_new - HALF_PLAYER < TABLE_TOP:
+    #     y_rod_new = TABLE_TOP + HALF_PLAYER     #Prevent the motors from over-running when the ball is projected to go right by the wall
+    # elif y_rod_new + HALF_PLAYER > TABLE_BOTTOM:
+    #     y_rod_new = TABLE_BOTTOM - HALF_PLAYER
 
     movement_amount = y_rod_new - current_player_y
     print(movement_amount)
@@ -53,12 +53,12 @@ def motor_drive(rod_move, movement_amount):
 
     
     if (movement_amount < 0):
-        myKit.servo[rod_move].angle = 70
-        sleep(0.15)
-        
+        myKit.servo[rod_move].angle = 90        
         myKit.servo[rod_move].angle = 75
-        time.sleep(0.5)
+        sleep(0.25)
         myKit.servo[rod_move].angle = 90
+        sleep(0.02)
+
   
     # update player positions
     for i in range(3):
