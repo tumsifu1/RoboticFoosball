@@ -10,10 +10,7 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 import time
-
-
-DEBUG = False 
-TIMING = False
+import argparse
 
 # Setup Device
 device = torch.device("cuda")
@@ -118,8 +115,8 @@ def plot_detections(original_image, detected_tile, detected_positions, grid_size
     # Overlay relative coordinates (center of tile)
     axes[1].scatter(region_w // 2, region_h // 2, c='red', marker='o', s=100, label="Ball Position")
 
-    plt.show(block=False)
-    plt.pause(0.001)
+    fig.savefig("./saved_frames/plot.jpg")
+    quit()
 
 def reconstruct_image(tiles, grid_size, image_shape):
     """Rebuild the original image from tiles."""
@@ -180,70 +177,94 @@ def process_frame(frame):
     # Run ML models
     with torch.no_grad():
         # Classifier
-        classifier_start = time.time()
+        if TIMING:
+            classifier_start = time.time()
+
         logits = classifier(tiles_tensor)
-        torch.cuda.synchronize()  # Wait for GPU operations to complete
+
+        if TIMING:
+            cl_model_end = time.time()
+            print(f"Classifier Model Ran in: {(cl_model_end - classifier_start) * 1000:.2f} ms")
+
         probs = torch.sigmoid(logits).squeeze()
+
         if TIMING:
             classifier_end = time.time()
-            print(f"Classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
-        if DEBUG:
-            print(f"Logits:\n{logits}\bProbs:\n{probs}")
-        # Resize for localizer
+            print(f"Sigmoid time: {(classifier_end - cl_model_end) * 1000:.2f} ms")
+            print(f"Total classifier time: {(classifier_end - classifier_start) * 1000:.2f} ms")
+       
+        # if DEBUG:
+            # print(f"Logits:\n{logits}\bProbs:\n{probs}")
+
         if TIMING:
             localizer_start = time.time()
 
-        tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
+        # tiles_tensor = F.interpolate(tiles_tensor, size=(227, 227), mode='bilinear', align_corners=False)
         
         # Run localizer
         coordinates = localizer(tiles_tensor)
-        torch.cuda.synchronize()  # Wait for GPU operations to complete
         if TIMING:
-            localizer_end = time.time()
-            print(f"Localizer time: {(localizer_end - localizer_start) * 1000:.2f} ms")
-    
+            loc_model_end = time.time()
+            print(f"Localizer Model Ran Time: {(loc_model_end - localizer_start) * 1000:.2f} ms")
+
     # Detection logic
     if TIMING:
         detect_start = time.time()
 
-    threshold = 0.99
+    threshold = 0.9
     ball_tiles = (probs > threshold).nonzero(as_tuple=True)[0].tolist()
     detected_positions = [(idx // grid_size, idx % grid_size, probs[idx].item()) for idx in ball_tiles]
     
     if TIMING:
         detect_end = time.time()
         print(f"Detection logic time: {(detect_end - detect_start) * 1000:.2f} ms")
-    if DEBUG:
-        print(f"Detected Position: {detected_positions[0]}")
-    return detected_positions[0]
+    print(f"Detected Positions: {detected_positions}")
     
     # Reconstruction
     if TIMING:
         recon_start = time.time()
     
-    if DEBUG:
+    if PLOT:
         reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
     
-        # Extract detected tile
-        if detected_positions:
-            row, col, _ = detected_positions[0]
-            tile_idx = row * grid_size + col
-            H, W, _ = frame.shape
-            region_h, region_w = H // grid_size, W // grid_size
-            y = row * region_h
-            x = col * region_w
+    # Extract detected tile
+    if detected_positions:
+        row, col, _ = detected_positions[0]
+        tile_idx = row * grid_size + col
+        H, W, _ = frame.shape
+        region_h, region_w = H // grid_size, W // grid_size
+        y = row * region_h
+        x = col * region_w
+        if PLOT:
             detected_tile = reconstructed_image[y:y+region_h, x:x+region_w]
-        else:
-            detected_tile = np.zeros_like(tiles[0])
+        print(f"Global Prediction: ({x, y})")
+    else:
+        detected_tile = np.zeros_like(tiles[0])
 
-        if TIMING:
-            recon_end = time.time()
-            print(f"Reconstruction time: {(recon_end - recon_start) * 1000:.2f} ms")
-            total_end = time.time()
-            total_time = total_end - total_start
-            print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
-    
+    if TIMING:
+        recon_end = time.time()
+        print(f"Reconstruction time: {(recon_end - recon_start) * 1000:.2f} ms")
+    if PLOT:
         plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
 
+    if TIMING:
+        total_end = time.time()
+        total_time = total_end - total_start
+        print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
+    
+    return (x, y) if detected_positions else None
+
 if __name__ == "__main__":
+    global DEBUG, TIMING, PLOT
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-d", default='T', choices=['T','F'], help="Enable debug logs")
+    parser.add_argument("-t", default='F', choices=['T','F'], help="Enable timing logs")
+    parser.add_argument("-p", default='F', choices=['T','F'], help="Plot one output")
+    
+    args = parser.parse_args()
+    
+    DEBUG = (args.d == 'T')
+    TIMING = (args.t == 'T')
+    PLOT = (args.p == 'T')
     ingest_stream()

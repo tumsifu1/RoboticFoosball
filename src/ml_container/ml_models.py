@@ -42,9 +42,10 @@ def ingest_stream():
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
                     coords = process_frame(frame)
-                    outp = f"{coords[0]},{coords[1]},{int((time.time() - start) * 1000)},{time.time()}"
-                    print(f"Sending Coords: {outp}")
-                    socket.send_string(f"BALL {outp}")
+                    if coords:
+                        outp = f"{coords[0]},{coords[1]},{int((time.time() - start) * 1000)}"
+                        print(f"Sending Coords: {outp}")
+                        socket.send_string(f"BALL {outp}")
 
                 buffer.unmap(map_info)
         
