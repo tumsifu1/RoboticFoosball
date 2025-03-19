@@ -21,3 +21,4 @@ docker-compose.override.yml
 README.md
 
 /src/ml_container/get_image.py
+/src/ml_container/saved_frames
