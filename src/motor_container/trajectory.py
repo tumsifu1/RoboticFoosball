@@ -41,11 +41,11 @@ def get_trajectory(ball_pos_2, v_x, v_y):
     y = ball_pos_2[1]
 
     # Define which rods to trigger based on ball x
-    if x > RIGHT_ROD_X:
+    if x > RIGHT_ROD_X - 40:
         trigger_rods = [0, 1, 2]
-    elif MIDDLE_ROD_X < x <= RIGHT_ROD_X:
+    elif MIDDLE_ROD_X - 40 < x <= RIGHT_ROD_X - 40:
         trigger_rods = [1, 2]
-    elif LEFT_ROD_X < x <= MIDDLE_ROD_X:
+    elif LEFT_ROD_X  - 40 < x <= MIDDLE_ROD_X - 40:
         trigger_rods = [2]
     else:
         return

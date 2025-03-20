@@ -35,7 +35,7 @@ def motor_drive(rod_move, movement_amount, t_intercept):
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
             myKit.servo[rod_move * 2].angle = 160
-        sleep(sleep_amt*1.5)
+        sleep(sleep_amt*1.25)
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
         sleep(0.01)
@@ -44,7 +44,7 @@ def motor_drive(rod_move, movement_amount, t_intercept):
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
             myKit.servo[rod_move * 2].angle = 25
-        sleep(sleep_amt*1.5)
+        sleep(sleep_amt*1.25)
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
         sleep(0.01)
