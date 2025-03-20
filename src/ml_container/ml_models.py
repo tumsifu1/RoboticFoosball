@@ -12,17 +12,12 @@ context = zmq.Context()
 # Create PUSH socket
 socket = context.socket(zmq.PUB)
 socket.setsockopt(zmq.IMMEDIATE, 1)
-socket.setsockopt(zmq.SNDHWM, 1)  # Limit send buffer to 1 message
-
-socket.bind("ipc:///tmp/ball_updates")  # IPC for low latency
-time.sleep(2)
+socket.setsockopt(zmq.SNDHWM, 1)
+socket.bind("tcp://0.0.0.0:5555")  # Bind to all interfaces
 
 handshake_socket = context.socket(zmq.REP)
-handshake_socket.bind("ipc:///tmp/ball_handshake")
-print("Waiting for motor_container to connect...")
-handshake_socket.recv_string()  # Wait for ready signal
-handshake_socket.send_string("READY")
-print("Motor container connected, proceeding with processing")
+handshake_socket.bind("tcp://0.0.0.0:5556")  # Handshake port
+print("Waiting for motor connection...")
 
 start = time.time()
 

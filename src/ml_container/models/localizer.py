@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torchvision.models import mobilenet_v3_small
 class BallLocalization(nn.Module):
-    def __init__(self, pretrained=True):
+    def __init__(self, pretrained=False):
         super(BallLocalization, self).__init__()
 
         # Load MobileNetV3-Small as the feature extractor

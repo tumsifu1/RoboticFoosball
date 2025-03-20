@@ -1,8 +1,6 @@
 version: "3.8"
 services:
   ml_container:
-    depends_on:
-      - motor_container
     build: ./src/ml_container
     runtime: nvidia  # Enable NVIDIA runtime
     ports:
@@ -14,23 +12,3 @@ services:
       - /usr/local/cuda-10.2:/usr/local/cuda-10.2:ro  # Mount CUDA libraries from host
     ipc: "host"  # Enable IPC communication
 
-  motor_container:
-    build: ./src/motor_container
-    ipc: "host"
-    volumes:
-      - /tmp:/tmp
-      - /dev:/dev
-      - /proc/device-tree:/proc/device-tree:ro
-      - /sys/devices/:/sys/devices/
-      - /sys/bus/i2c/devices/:/sys/bus/i2c/devices/
-
-    privileged: true
-    devices:
-      - "/dev/i2c-1:/dev/i2c-1"
-    cap_add:
-      - SYS_RAWIO
-    environment:
-      - BLINKA_FORCECHIP=JETSON_TX2
-      - BLINKA_FORCEBOARD=JETSON_NANO
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - NVIDIA_VISIBLE_DEVICES=all

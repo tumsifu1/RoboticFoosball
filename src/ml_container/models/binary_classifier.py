@@ -7,7 +7,7 @@ class BinaryClassifier(nn.Module):
         super(BinaryClassifier, self).__init__()
         
         # Use a smaller, faster model instead of ResNet18
-        self.model = models.mobilenet_v3_small(pretrained=True)
+        self.model = models.mobilenet_v3_small(pretrained=False)
 
         # Adjust the final classification layer
         feature_size = self.model.classifier[0].in_features

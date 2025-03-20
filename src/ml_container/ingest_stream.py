@@ -93,32 +93,6 @@ def ingest_stream():
         print("Stopping...")
         pipeline.set_state(Gst.State.NULL)
 
-def plot_detections(original_image, detected_tile, detected_positions, grid_size, image_shape):
-    """Plot both the original image and detected tile with ball positions."""
-
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-
-    # Plot full image
-    axes[0].imshow(original_image)
-    axes[0].set_title("Original Image with Absolute Coordinates")
-
-    # Overlay absolute coordinates
-    H, W, _ = image_shape
-    region_h, region_w = H // grid_size, W // grid_size
-    for row, col, prob in detected_positions:
-        x_abs = int((col + 0.5) * region_w)  # Center of tile
-        y_abs = int((row + 0.5) * region_h)  
-        axes[0].scatter(x_abs, y_abs, c='red', marker='o', s=100, label="Ball Position")
-
-    # Plot detected tile
-    axes[1].imshow(detected_tile)
-    axes[1].set_title("Detected Tile with Relative Coordinates")
-
-    # Overlay relative coordinates (center of tile)
-    axes[1].scatter(region_w // 2, region_h // 2, c='red', marker='o', s=100, label="Ball Position")
-
-    fig.savefig("./saved_frames/plot.jpg")
-    quit()
 
 def reconstruct_image(tiles, grid_size, image_shape):
     """Rebuild the original image from tiles."""
@@ -136,136 +110,104 @@ def reconstruct_image(tiles, grid_size, image_shape):
 
     return full_image
 
+
+def visualize_prediction(frame, global_position):
+    """
+    Visualize the prediction on the original frame and save the image.
+    
+    Args:
+    frame (numpy.ndarray): The original frame (H x W x 3)
+    global_position (tuple): (x, y) coordinates of the prediction
+    save_path (str): Path to save the output image
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Display the original frame
+    ax.imshow(frame)
+    
+    # Mark the prediction
+    x, y = global_position
+    ax.scatter(x, y, c='red', s=100, marker='x', linewidths=2)
+    
+    # Add a circle around the prediction for better visibility
+    circle = plt.Circle((x, y), 20, fill=False, edgecolor='red', linewidth=2)
+    ax.add_artist(circle)
+    
+    # Set title and remove axis ticks
+    ax.set_title("Foosball Detection")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    
+    # Save the figure
+    plt.savefig('./saved_frames/plot.jpg', dpi=300, bbox_inches='tight')
+    plt.close(fig)  # Close the figure to free up memory
+
 def process_frame(frame):
-    global DEBUG, TIMING, PLOT
+    frame_tensor = torch.tensor(frame, device=device).unsqueeze(0).permute(0, 3, 1, 2)
+    start = time.time()
 
-    """Processes frames in real-time with low latency on TX2."""
-    if TIMING:
-        total_start = time.time()
-    if DEBUG:
-        print("Processing Frame")
-    
-    # Segment Image into Tiles
-    segment_start = time.time()
+    # Assume frame_tensor is already on GPU
     grid_size = 8
-    tiles = segment_image_fast(frame, grid_size)
-    if TIMING:
-        segment_end = time.time()
-        print(f"Segmentation time: {(segment_end - segment_start) * 1000:.2f} ms")
-    
-    if TIMING:
-        preproc_start = time.time()
-    tiles = np.stack(tiles)  # Stack all tiles into a single array
-    tiles = tiles.astype(np.float32)
-    if DEBUG:
-        print(f"Stacked shape: {tiles.shape}, dtype: {tiles.dtype}")
-        print(f"Tiles array memory info: {tiles.nbytes / (1024 * 1024):.2f} MB")
-        print(f"CUDA memory before conversion: {torch.cuda.memory_allocated() / (1024 * 1024):.2f} MB")
-        
-    # Convert to PyTorch tensor
-    tiles_tensor = torch.tensor(tiles, dtype=torch.float32, device="cuda").permute(0, 3, 1, 2) / 255.0
+    H, W = frame_tensor.shape[2], frame_tensor.shape[3]
+    region_h, region_w = H // grid_size, W // grid_size
 
-    if TIMING:
-        tensor_end = time.time()
-    
-    # Preprocess
-    tiles_tensor = preprocess(tiles_tensor)
+    # Segment the frame into tiles on GPU
+    tiles = frame_tensor.unfold(2, region_h, region_h).unfold(3, region_w, region_w)
+    tiles = tiles.contiguous().view(-1, 3, region_h, region_w) / 255
 
-    if TIMING:
-        preproc_end = time.time()
-        print(f"Tensor Preprocess time: {(preproc_end - preproc_start) * 1000:.2f} ms")
-    
-    # Run ML models
+    tiles = preprocess(tiles)
+
+    pre_end = time.time()
+    print(f"Preprocess: {(pre_end - start) * 1000} ms")
+
+    # Run classifier and localizer
     with torch.no_grad():
-        # Classifier
-        if TIMING:
-            classifier_start = time.time()
+        logits = classifier(tiles)
+        output = localizer(tiles)
+    
+    models_end = time.time()
+    print(f"Models: {(models_end - pre_end) * 1000} ms")
 
-
-        logits = classifier(tiles_tensor)
-        output = localizer(tiles_tensor)
-        pred_x,pred_y = output[0, 0], output[0, 1]
-
-        if TIMING:
-            cl_model_end = time.time()
-            print(f"Models Ran in: {(cl_model_end - classifier_start) * 1000:.2f} ms")
-
-        probs = torch.sigmoid(logits).squeeze()
-
-        if TIMING:
-            classifier_end = time.time()
-            print(f"Sigmoid time: {(classifier_end - cl_model_end) * 1000:.2f} ms")
-       
-        if DEBUG:
-            print(f"Logits:\n{logits}\nProbs:\n{probs}\nCoordinates:{output}")
-
-    if TIMING:
-        detect_start = time.time()
-
-    torch.cuda.synchronize()
-
-    if TIMING:
-        sync_end = time.time()
-        print(f"Sync Time: {(sync_end- detect_start) * 1000:.2f}")
-
+    # Process results on GPU
+    probs = torch.sigmoid(logits).squeeze()
     max_prob_idx = probs.argmax()
-    max_prob_val = probs[max_prob_idx]
+    max_prob_val = probs[max_prob_idx].item()  # Get the actual probability value
+    # Apply threshold
+    probability_threshold = 0.9
+    if max_prob_val < probability_threshold:
+        return None  # No detection above the threshold
 
-    if max_prob_val < .9: return None
-
-    if TIMING:
-        argmax_end = time.time()
-        print(f"Argmax computation time: {(argmax_end - sync_end) * 1000:.2f} ms")
-
-
-    max_prob_idx = max_prob_idx.to("cuda")
     row = max_prob_idx // grid_size
     col = max_prob_idx % grid_size
+    pred_x, pred_y = output[max_prob_idx, 0], output[max_prob_idx, 1]
 
-    if PLOT:
-        detected_positions = [(row, col, max_prob_val.cpu().item())]    
-    
-    if TIMING:
-        print(f"Grid mapping time: {(time.time() - argmax_end) * 1000:.2f} ms")
-        grid_map_end = time.time()
-
-    region_h, region_w = frame.shape[0] // grid_size, frame.shape[1] // grid_size #todo check the  frame size
+    res_end = time.time()
+    print(f"Process Results: {(res_end - models_end) * 1000} ms")
 
     pred_x_cpu, pred_y_cpu = pred_x.cpu().item(), pred_y.cpu().item()
-    global_position = [(col * region_w) + pred_x_cpu, (row * region_h) + pred_y_cpu]
 
-    print(f"Global Position: {global_position}")
-
-    if TIMING:
-        print(f"Global coordinate computation time: {(time.time() - grid_map_end) * 1000:.2f} ms")
-        coord_end = time.time()
+    # Scale the localizer's output to the tile size
+    norm_x = pred_x / frame_width
+    norm_y = pred_y / frame_height
     
-    if PLOT:
-        reconstructed_image = reconstruct_image(tiles, grid_size, frame.shape)
-        if detected_positions:
-            row, col, _ = detected_positions[0]
-            tile_idx = row * grid_size + col
-            H, W, _ = frame.shape
-            region_h, region_w = H // grid_size, W // grid_size
-            y = row * region_h
-            x = col * region_w
-            if PLOT:
-                detected_tile = reconstructed_image[y:y+region_h, x:x+region_w]
-            print(f"Global Prediction: ({x, y})")
-        else:
-            detected_tile = np.zeros_like(tiles[0])
-        plot_detections(reconstructed_image, detected_tile, detected_positions, grid_size, frame.shape)
+    # Scale to tile size
+    local_x = norm_x * region_w
+    local_y = norm_y * region_h
+    
+    # Add global offset
+    global_x = (col * region_w) + local_x
+    global_y = (row * region_h) + local_y
 
-    if TIMING:
-        total_end = time.time()
-        total_time = total_end - total_start
-        print(f"TOTAL FRAME PROCESSING TIME: {total_time * 1000:.2f} ms")
+    calc_end = time.time()
+    print(f"Calculate Global: {(calc_end - res_end) * 1000} ms")
+    print(f"TOTAL: {(calc_end - start) * 1000} ms")
 
-    torch.cuda.empty_cache()
+    visualize_prediction(frame, (global_x, global_y))
+    quit()
+    # Only transfer final coordinates to CPU
+    return global_x, global_y
 
-    return global_position if global_position else None
-
-# if __name__ == "__main__":
+if __name__ == "__main__":
 #     global DEBUG, TIMING, PLOT
 #     parser = argparse.ArgumentParser()
 
@@ -278,4 +220,4 @@ def process_frame(frame):
 #     DEBUG = (args.d == 'T')
 #     TIMING = (args.t == 'T')
 #     PLOT = (args.p == 'T')
-#     ingest_stream()
+    ingest_stream()
