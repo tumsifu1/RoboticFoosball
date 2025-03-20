@@ -1,22 +1,21 @@
 version: "3.8"
-
 services:
-  publisher:
+  ml_container:
+    depends_on:
+      - motor_container
     build: ./src/ml_container
-    container_name: publisher
+    runtime: nvidia  # Enable NVIDIA runtime
     ports:
-      - "5555:5555"
-    networks:
-      - app_network
+      - "5000:5000/udp"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all  # Make all GPUs visible to the container
+    volumes:
+      - /tmp:/tmp  # Share IPC socket
+      - /usr/local/cuda-10.2:/usr/local/cuda-10.2:ro  # Mount CUDA libraries from host
+    ipc: "host"  # Enable IPC communication
 
   motor_container:
     build: ./src/motor_container
-    container_name: motor_container
-    depends_on:
-      - publisher
-    networks:
-      - app_network
-
-networks:
-  app_network:
-    driver: bridge
+    ipc: "host"  # Enable IPC communication
+    volumes:
+      - /tmp:/tmp  # Share IPC socket

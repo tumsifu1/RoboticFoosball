@@ -1,30 +1,9 @@
-import zmq
-import time
+import numpy as np
+# from multiprocessing import Process, Queue
+import matplotlib.pyplot as plt
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
-import numpy as np
-from ingest_stream import process_frame
-
-# ZeroMQ Context
-context = zmq.Context()
-
-# Create PUSH socket
-socket = context.socket(zmq.PUB)
-socket.setsockopt(zmq.IMMEDIATE, 1)
-socket.setsockopt(zmq.SNDHWM, 1)  # Limit send buffer to 1 message
-
-socket.bind("ipc:///tmp/ball_updates")  # IPC for low latency
-time.sleep(2)
-
-handshake_socket = context.socket(zmq.REP)
-handshake_socket.bind("ipc:///tmp/ball_handshake")
-print("Waiting for motor_container to connect...")
-handshake_socket.recv_string()  # Wait for ready signal
-handshake_socket.send_string("READY")
-print("Motor container connected, proceeding with processing")
-
-start = time.time()
 
 def ingest_stream():
     Gst.init(None)
@@ -41,12 +20,11 @@ def ingest_stream():
             if success:
                 if len(map_info.data) == width * height * 3:
                     frame = np.frombuffer(map_info.data, dtype=np.uint8).reshape((height, width, 3))
-                    coords = process_frame(frame)
-                    if coords:
-                        outp = f"{coords[0]},{coords[1]},{int((time.time() - start) * 1000)}"
-                        print(f"Sending Coords: {outp}")
-                        socket.send_string(f"BALL {outp}")
-
+                    import os
+                    os.makedirs("/app/saved_frames", exist_ok=True)
+                    plt.imsave("/app/saved_frames/new_frame.jpg", frame)
+                    print(f"Frame saved to /app/saved_frames/new_frame.jpg")
+                    quit()
                 buffer.unmap(map_info)
         
         return Gst.FlowReturn.OK
