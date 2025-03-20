@@ -1,6 +1,7 @@
 import zmq
 import time
 from trajectory import get_velocities
+from game_init import game_init
 
 context = zmq.Context()
 
@@ -12,7 +13,7 @@ socket.connect("tcp://localhost:5555")  # Connect to container's IP
 socket.setsockopt_string(zmq.SUBSCRIBE, "BALL ")
 
 
-# Rest of your existing code remains the same
+game_init()
 
 counter = 0
 

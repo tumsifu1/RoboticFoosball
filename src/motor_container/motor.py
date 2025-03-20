@@ -31,20 +31,20 @@ def trigger_motor(rod_move, y_rod_new, t_intercept):
 def motor_drive(rod_move, movement_amount, t_intercept):
     sleep_amt = abs(movement_amount) / TABLE_HEIGHT * 0.25
     # Movement phase (servo direction depends on sign of movement)
-    if movement_amount < 0:
+    if movement_amount > 0:
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
             myKit.servo[rod_move * 2].angle = 160
-        sleep(sleep_amt)
+        sleep(sleep_amt*1.5)
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
         sleep(0.01)
 
-    elif movement_amount > 0:
+    elif movement_amount < 0:
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
             myKit.servo[rod_move * 2].angle = 25
-        sleep(sleep_amt)
+        sleep(sleep_amt*1.5)
         with servo_lock:
             myKit.servo[rod_move * 2].angle = 90
         sleep(0.01)
