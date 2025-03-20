@@ -22,21 +22,18 @@ class FoosballDatasetLocalizer(FoosballDataset):
         #ball_exists = torch.tensor([item[3] for item in batch], dtype=torch.float32)  # Collect all ball_exists values
 
         return positive_regions, x_coords, y_coords, old_x_coord, old_y_coord, img_names
-    def preprocessImage(self, image,keypoints):
-        """Preprocess the image by applying transformations and augmentations"""
-        #conmvert to tensor
-        # Apply augmentations if training
-        x, y = keypoints[0], keypoints[1]
-        if self.train:
-            keypoints = [keypoints] #wrap in list
-            augmented = self.aug_pipeline(image=image.permute(1, 2, 0).numpy(),keypoints=keypoints)
-            image = torch.tensor(augmented['image']).permute(2, 0, 1).float()  # Convert back to CHW
-            if not augmented:
-                print("augmented is empty")
-            augmented_keypoints = augmented["keypoints"][0]
-            x,y = augmented_keypoints[0], augmented_keypoints[1]
+    def preprocessImage(self, image, keypoints):
+        """Preprocess the image by applying only pixel augmentations (no spatial transformations)"""
+        
+        x, y = keypoints  # Extract keypoints but do not modify them
 
-        image = self.preprocess(image)  # Always preprocess the image
+        if self.train:
+            augmented = self.pixelAugmentations(image=image.permute(1, 2, 0).numpy())  # Convert to HWC for Albumentations
+            image = torch.tensor(augmented['image']).permute(2, 0, 1).float()  # Convert back to CHW
+
+        image = self.preprocess(image)  # Normalize the image
+
+        return image, x, y  # Return unmodified keypoints
 
         return image,x,y
     def get_new_coordinates(self, x, y):
