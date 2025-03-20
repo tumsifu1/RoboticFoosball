@@ -4,7 +4,7 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 import numpy as np
-from ingest_stream import process_frame
+from new import process_frame
 
 # ZeroMQ Context
 context = zmq.Context()
