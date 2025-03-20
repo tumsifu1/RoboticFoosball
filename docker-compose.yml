@@ -16,6 +16,21 @@ services:
 
   motor_container:
     build: ./src/motor_container
-    ipc: "host"  # Enable IPC communication
+    ipc: "host"
     volumes:
-      - /tmp:/tmp  # Share IPC socket
+      - /tmp:/tmp
+      - /dev:/dev
+      - /proc/device-tree:/proc/device-tree:ro
+      - /sys/devices/:/sys/devices/
+      - /sys/bus/i2c/devices/:/sys/bus/i2c/devices/
+
+    privileged: true
+    devices:
+      - "/dev/i2c-1:/dev/i2c-1"
+    cap_add:
+      - SYS_RAWIO
+    environment:
+      - BLINKA_FORCECHIP=JETSON_TX2
+      - BLINKA_FORCEBOARD=JETSON_NANO
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all

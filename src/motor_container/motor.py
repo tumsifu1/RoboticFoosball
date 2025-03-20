@@ -62,11 +62,11 @@ def motor_drive(rod_move, movement_amount):
         sleep(0.02)
   
     #shoot ball
-    myKit.servo[rod_move * 2 + 8].angle = 45
+    myKit.servo[rod_move * 2 + 8].angle = 90
     sleep(0.02)
-    myKit.servo[rod_move * 2 + 8].angle = 130
+    myKit.servo[rod_move * 2 + 8].angle = 180
     sleep(0.1)
-    myKit.servo[rod_move * 2 + 8].angle = 45
+    myKit.servo[rod_move * 2 + 8].angle = 90
     sleep(0.02)
 
     sleep(1)
