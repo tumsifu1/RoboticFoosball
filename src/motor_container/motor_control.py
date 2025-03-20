@@ -2,22 +2,17 @@ import zmq
 import time
 from trajectory import get_velocities
 
-# ZeroMQ Context
 context = zmq.Context()
 
-# Create PULL socket
+# Create SUB socket
 socket = context.socket(zmq.SUB)
-socket.setsockopt(zmq.RCVHWM, 1) 
+socket.setsockopt(zmq.RCVHWM, 1)
 socket.setsockopt(zmq.IMMEDIATE, 1)
-socket.connect("ipc:///tmp/ball_updates")
+socket.connect("tcp://localhost:5555")  # Connect to container's IP
 socket.setsockopt_string(zmq.SUBSCRIBE, "BALL ")
-print(f"ZMQ PUB/SUB setup complete - subscribed to topic: BALL")
 
-handshake_socket = context.socket(zmq.REQ)
-handshake_socket.connect("ipc:///tmp/ball_handshake")
-handshake_socket.send_string("READY")
-handshake_socket.recv_string()  # Wait for acknowledgment
-print("Connected and synchronized with ml_container")
+
+# Rest of your existing code remains the same
 
 counter = 0
 
@@ -34,7 +29,7 @@ while True:
 
             print("prev: ", prev, "     curr: ", curr)
 
-            if curr:
+            if prev:
                  get_velocities(prev, curr)
 
             prev = curr

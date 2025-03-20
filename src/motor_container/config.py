@@ -2,9 +2,15 @@
 config.py: contains constants shared across files
 """
 
+
+# from adafruit_pca9685 import PCA9685
+
+import busio
+import board
+
+
 from adafruit_servokit import ServoKit
 
-from adafruit_pca9685 import PCA9685
 
 #Dimensions of elements of the tables, pixel-wise
 FRAME_WIDTH = 2304
