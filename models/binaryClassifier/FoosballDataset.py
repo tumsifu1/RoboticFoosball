@@ -50,10 +50,11 @@ class FoosballDataset(Dataset):
         #pixel augmentations for training classifer model
 
         self.pixelAugmentations = A.Compose([
-            A.RandomBrightnessContrast(brightness_limit=(-0.2,0.1), contrast_limit=(-0.2,0.2), p=0.3),  # Subtle brightness/contrast tweaks
-            A.GaussNoise(std_range=(0.0,0.5),mean_range=(0,0), p=0.2),  # Reduced noise intensity and probability
-            A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10, val_shift_limit=0.5, p=0.2),  # Gentle color adjustments
-            A.Blur(blur_limit=(3,7), p=0.5)  # Very occasional slight blur
+            A.RandomBrightnessContrast(brightness_limit=(-0.4, 0.2), contrast_limit=(-0.3, 0.3), p=0.5),  # Stronger brightness/contrast shifts
+            A.GaussNoise(var_limit=(10.0, 50.0), p=0.5),  # Increase noise intensity and apply it more often
+            A.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=20, val_shift_limit=0.7, p=0.4),  # More aggressive color shifts
+            A.Blur(blur_limit=(5,9), p=0.6),  # Increase max blur and probability
+            A.Downscale(scale_min=0.5, scale_max=0.9, p=0.5),  # Simulate low-resolution images
         ])
 
         #spatial augmentations for training localizer model
@@ -183,23 +184,32 @@ class FoosballDataset(Dataset):
             raise ValueError(f"Invalid coordinates at setUpgetItem: ({x}, {y})")
         return image, ball_exists, x, y, img_name
     
-    def preprocessImage(self, image,keypoints):
-        """Preprocess the image by applying transformations and augmentations"""
-        #conmvert to tensor
-        # Apply augmentations if training
-        x, y = keypoints[0], keypoints[1]
+    def preprocessImage(self, image):
+        """Preprocess the image by applying only pixel augmentations (no spatial transformations)"""
+        
         if self.train:
-            keypoints = [keypoints] #wrap in list
-            augmented = self.aug_pipeline(image=image.permute(1, 2, 0).numpy(),keypoints=keypoints)
-            image = torch.tensor(augmented['image']).permute(2, 0, 1).float()  # Convert back to CHW
-            if not augmented:
-                print("augmented is empty")
-            augmented_keypoints = augmented["keypoints"][0]
-            x,y = augmented_keypoints[0], augmented_keypoints[1]
+            augmented = self.pixelAugmentations(image=image.permute(1, 2, 0).numpy())  # Convert to HWC for Albumentations
+            augmented_image = augmented['image']
 
-        image = self.preprocess(image)  # Always preprocess the image
+            # Ensure the image has 3 channels (convert grayscale to RGB)
+            if augmented_image.ndim == 2:  # If image is (H, W), add a channel dimension
+                augmented_image = np.repeat(augmented_image[:, :, np.newaxis], 3, axis=-1)  # Convert grayscale to RGB
 
-        return image,x,y
+            # If the last dimension is not 3 (not RGB), something is wrong
+            elif augmented_image.shape[-1] != 3:
+                raise ValueError(f"Unexpected image shape after augmentation: {augmented_image.shape}")
+
+            # Convert back to PyTorch format (C, H, W)
+            image = torch.tensor(augmented_image).permute(2, 0, 1).float()
+
+        image = self.preprocess(image)  # Normalize the image
+
+        # Debugging check
+        if image.ndim != 3:
+            raise ValueError(f"Final processed image shape is invalid: {image.shape}")
+
+        return image  # Ensure image is always (C, H, W)
+
     
     def returnLabels(self, ball_exists, positive_region, negative_region):
         """for return the regions as a stack of tensors and the labels as a tensor"""
@@ -218,7 +228,7 @@ class FoosballDataset(Dataset):
         image, ball_exists, x, y, _= self.setupGetItem(idx)
         # Apply preprocessing to all data
         
-        image, x,y = self.preprocessImage(image, (x,y))
+        image = self.preprocessImage(image)
         
         regions = self.breakImageIntoRegions(image)
         # Find positive (ball) region

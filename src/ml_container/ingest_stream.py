@@ -183,7 +183,8 @@ def process_frame(frame):
 
 
         logits = classifier(tiles_tensor)
-        coordinates = localizer(tiles_tensor)
+        output = localizer(tiles_tensor)
+        pred_x,pred_y = output[0, 0], output[0, 1]
 
         if TIMING:
             cl_model_end = time.time()
@@ -196,7 +197,7 @@ def process_frame(frame):
             print(f"Sigmoid time: {(classifier_end - cl_model_end) * 1000:.2f} ms")
        
         if DEBUG:
-            print(f"Logits:\n{logits}\nProbs:\n{probs}\n{coordinates}")
+            print(f"Logits:\n{logits}\nProbs:\n{probs}\nCoordinates:{output}")
 
     if TIMING:
         detect_start = time.time()
@@ -228,10 +229,10 @@ def process_frame(frame):
         print(f"Grid mapping time: {(time.time() - argmax_end) * 1000:.2f} ms")
         grid_map_end = time.time()
 
-    region_h, region_w = frame.shape[0] // grid_size, frame.shape[1] // grid_size
-    global_position = [col * region_w, row * region_h]
+    region_h, region_w = frame.shape[0] // grid_size, frame.shape[1] // grid_size #todo check the  frame size
 
-    global_position = [t.cpu().item() if torch.is_tensor(t) else t for t in global_position]
+    pred_x_cpu, pred_y_cpu = pred_x.cpu().item(), pred_y.cpu().item()
+    global_position = [(col * region_w) + pred_x_cpu, (row * region_h) + pred_y_cpu]
 
     print(f"Global Position: {global_position}")
 
